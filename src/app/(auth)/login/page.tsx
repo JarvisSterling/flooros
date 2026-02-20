@@ -33,7 +33,7 @@ export default function LoginPage() {
     setError(null);
     const parsed = loginSchema.safeParse({ email, password });
     if (!parsed.success) {
-      setError(parsed.error.errors[0].message);
+      setError(parsed.error.errors[0]?.message ?? "Invalid input");
       return;
     }
     setLoading(true);
