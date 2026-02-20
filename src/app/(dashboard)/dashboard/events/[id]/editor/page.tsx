@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { createClient } from '@/lib/supabase/client';
 import { useEditorStore } from '@/store/editor-store';
-import Canvas from '@/components/editor/Canvas';
 import Toolbar from '@/components/toolbar/Toolbar';
 import LayerPanel from '@/components/panels/LayerPanel';
 import PropertiesPanel from '@/components/panels/PropertiesPanel';
@@ -14,8 +14,12 @@ import FloorOverview from '@/components/panels/FloorOverview';
 import WayfindingPanel from '@/components/panels/WayfindingPanel';
 import AnchorPanel from '@/components/panels/AnchorPanel';
 import CrossFloorLinkPanel from '@/components/panels/CrossFloorLinkPanel';
-import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
-import { useAutoSave } from '@/hooks/useAutoSave';
+import useKeyboardShortcuts from '@/hooks/useKeyboardShortcuts';
+import useAutoSave from '@/hooks/useAutoSave';
+
+const Canvas = dynamic(() => import('@/components/editor/Canvas'), { ssr: false });
+
+type PanelType = 'layers' | 'library' | 'floors';
 
 export default function EventEditorPage() {
   const params = useParams();
@@ -24,16 +28,9 @@ export default function EventEditorPage() {
   const [loading, setLoading] = useState(true);
   const [event, setEvent] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [activePanel, setActivePanel] = useState<PanelType>('layers');
 
-  const {
-    activePanel,
-    setActivePanel,
-    loadFloorPlans,
-    showFloorOverview,
-    showWayfinding,
-    showAnchors,
-    showCrossFloorLinks,
-  } = useEditorStore();
+  const { loadFloors, floorPlanId } = useEditorStore();
 
   useKeyboardShortcuts();
   useAutoSave();
@@ -44,7 +41,6 @@ export default function EventEditorPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push('/login'); return; }
 
-      // Load event and verify access
       const { data: eventData, error: eventError } = await supabase
         .from('events')
         .select('*, organizations(*)')
@@ -57,7 +53,6 @@ export default function EventEditorPage() {
         return;
       }
 
-      // Verify org membership
       const { data: member } = await supabase
         .from('organization_members')
         .select('role')
@@ -72,12 +67,11 @@ export default function EventEditorPage() {
       }
 
       setEvent(eventData);
-      // Load floor plans for this event
-      await loadFloorPlans(eventId);
+      await loadFloors(eventId);
       setLoading(false);
     }
     loadEvent();
-  }, [eventId, router, loadFloorPlans]);
+  }, [eventId, router, loadFloors]);
 
   if (loading) {
     return (
@@ -95,7 +89,12 @@ export default function EventEditorPage() {
       <div className="flex items-center justify-center h-screen bg-gray-950 text-white">
         <div className="text-center">
           <p className="text-red-400 mb-4">{error}</p>
-          <button onClick={() => router.back()} className="text-blue-400 hover:underline">Go back</button>
+          <button
+            onClick={() => router.push('/dashboard/events/' + eventId)}
+            className="text-blue-400 hover:underline"
+          >
+            ← Back to event
+          </button>
         </div>
       </div>
     );
@@ -103,27 +102,25 @@ export default function EventEditorPage() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-950 text-white overflow-hidden">
-      {/* Top toolbar */}
-      <Toolbar eventId={eventId} eventName={event?.name} />
+      <Toolbar />
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Left panel */}
         <div className="w-72 border-r border-gray-800 overflow-y-auto">
           <div className="flex border-b border-gray-800">
             <button
-              className={`flex-1 px-3 py-2 text-xs ${activePanel === 'layers' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white'}`}
+              className={'flex-1 px-3 py-2 text-xs ' + (activePanel === 'layers' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white')}
               onClick={() => setActivePanel('layers')}
             >
               Layers
             </button>
             <button
-              className={`flex-1 px-3 py-2 text-xs ${activePanel === 'library' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white'}`}
+              className={'flex-1 px-3 py-2 text-xs ' + (activePanel === 'library' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white')}
               onClick={() => setActivePanel('library')}
             >
               Library
             </button>
             <button
-              className={`flex-1 px-3 py-2 text-xs ${activePanel === 'floors' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white'}`}
+              className={'flex-1 px-3 py-2 text-xs ' + (activePanel === 'floors' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white')}
               onClick={() => setActivePanel('floors')}
             >
               Floors
@@ -134,22 +131,14 @@ export default function EventEditorPage() {
           {activePanel === 'floors' && <FloorPanel />}
         </div>
 
-        {/* Canvas */}
         <div className="flex-1 relative">
           <Canvas />
         </div>
 
-        {/* Right panel */}
         <div className="w-80 border-l border-gray-800 overflow-y-auto">
           <PropertiesPanel />
         </div>
       </div>
-
-      {/* Overlay panels */}
-      {showFloorOverview && <FloorOverview />}
-      {showWayfinding && <WayfindingPanel />}
-      {showAnchors && <AnchorPanel />}
-      {showCrossFloorLinks && <CrossFloorLinkPanel />}
     </div>
   );
 }

@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 import { useEditorStore } from '@/store/editor-store';
 
-export default function useKeyboardShortcuts() {
+export function useKeyboardShortcuts() {
   const {
     setActiveTool, undo, redo, removeObjects, selectedObjectIds, clearSelection,
     copySelection, pasteClipboard,
@@ -13,12 +13,10 @@ export default function useKeyboardShortcuts() {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      // Don't capture when typing in inputs
       if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA' || (e.target as HTMLElement).tagName === 'SELECT') return;
 
       const ctrl = e.ctrlKey || e.metaKey;
 
-      // F6: Space pan
       if (e.key === ' ' && !e.repeat) {
         e.preventDefault();
         startSpacePan();
@@ -30,14 +28,10 @@ export default function useKeyboardShortcuts() {
       if (e.key === 'Delete' || e.key === 'Backspace') { if (selectedObjectIds.size > 0) removeObjects(Array.from(selectedObjectIds)); }
       if (e.key === 'Escape') { clearSelection(); setActiveTool('select'); }
 
-      // F3: Copy/Paste
       if (ctrl && e.key === 'c') { e.preventDefault(); copySelection(); return; }
       if (ctrl && e.key === 'v') { e.preventDefault(); pasteClipboard(); return; }
-
-      // F5: Select all
       if (ctrl && e.key === 'a') { e.preventDefault(); selectAll(); return; }
 
-      // F4: Arrow key nudge
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && selectedObjectIds.size > 0) {
         e.preventDefault();
         const step = e.shiftKey ? gridSize * 10 : gridSize;
@@ -52,7 +46,6 @@ export default function useKeyboardShortcuts() {
         return;
       }
 
-      // Tool shortcuts (only without modifiers)
       if (ctrl) return;
       if (e.key === 'v' || e.key === 'V') setActiveTool('select');
       if (e.key === 'r' || e.key === 'R') setActiveTool('rect');
@@ -79,3 +72,5 @@ export default function useKeyboardShortcuts() {
       copySelection, pasteClipboard, selectAll, startSpacePan, endSpacePan,
       objects, updateObject, gridSize]);
 }
+
+export default useKeyboardShortcuts;
