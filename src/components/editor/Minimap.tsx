@@ -32,7 +32,7 @@ export default function Minimap() {
 
   return (
     <div
-      className="absolute bottom-3 right-3 bg-[#0d1321]/90 backdrop-blur-md border border-white/10 rounded-xl shadow-xl overflow-hidden"
+      className="absolute bottom-11 right-3 bg-[#0d1321]/80 backdrop-blur-xl border border-white/[0.08] rounded-xl shadow-2xl shadow-black/30 overflow-hidden"
       style={{ width: MM_W, height: MM_H }}
     >
       <svg width={MM_W} height={MM_H} viewBox={`0 0 ${MM_W} ${MM_H}`}>

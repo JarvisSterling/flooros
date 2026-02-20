@@ -9,6 +9,7 @@ import { useEditorStore } from '@/store/editor-store';
 import FloatingToolbar from '@/components/toolbar/FloatingToolbar';
 import SideRail from '@/components/editor/SideRail';
 import StatusBar from '@/components/editor/StatusBar';
+import Minimap from '@/components/editor/Minimap';
 import LayerPanel from '@/components/panels/LayerPanel';
 import PropertiesPanel from '@/components/panels/PropertiesPanel';
 import ObjectLibrary from '@/components/panels/ObjectLibrary';
@@ -177,6 +178,9 @@ export default function EventEditorPage() {
 
           {/* Floating toolbar */}
           <FloatingToolbar />
+
+          {/* Minimap */}
+          <Minimap />
 
           {/* Status bar */}
           <StatusBar />
