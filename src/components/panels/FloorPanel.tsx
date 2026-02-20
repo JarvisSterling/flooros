@@ -2,13 +2,7 @@
 import React, { useState, useCallback } from 'react';
 import { useEditorStore } from '@/store/editor-store';
 import type { FloorPlan } from '@/types/database';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,39 +10,23 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Plus, GripVertical, MoreHorizontal, Pencil, Copy, Star, Trash2, Link2, Layers,
+} from 'lucide-react';
 
 function FloorItem({
-  floor,
-  isActive,
-  isDefault,
-  onSelect,
-  onDelete,
-  onDuplicate,
-  onRename,
-  onSetDefault,
-  dragHandlers,
+  floor, isActive, isDefault, onSelect, onDelete, onDuplicate, onRename, onSetDefault, dragHandlers,
 }: {
-  floor: FloorPlan;
-  isActive: boolean;
-  isDefault: boolean;
-  onSelect: () => void;
-  onDelete: () => void;
-  onDuplicate: () => void;
-  onRename: (name: string) => void;
-  onSetDefault: () => void;
-  dragHandlers: {
-    onDragStart: (e: React.DragEvent) => void;
-    onDragOver: (e: React.DragEvent) => void;
-    onDrop: (e: React.DragEvent) => void;
-  };
+  floor: FloorPlan; isActive: boolean; isDefault: boolean;
+  onSelect: () => void; onDelete: () => void; onDuplicate: () => void;
+  onRename: (name: string) => void; onSetDefault: () => void;
+  dragHandlers: { onDragStart: (e: React.DragEvent) => void; onDragOver: (e: React.DragEvent) => void; onDrop: (e: React.DragEvent) => void; };
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(floor.name);
 
   const handleRename = () => {
-    if (name.trim() && name !== floor.name) {
-      onRename(name.trim());
-    }
+    if (name.trim() && name !== floor.name) onRename(name.trim());
     setEditing(false);
   };
 
@@ -59,22 +37,17 @@ function FloorItem({
       draggable
       {...dragHandlers}
       onClick={onSelect}
-      className={`group relative flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer border transition-all duration-150 ${
+      className={`group relative flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer border transition-all duration-150 ${
         isActive
-          ? 'bg-accent border-border shadow-sm'
-          : 'border-transparent hover:bg-accent/50'
+          ? 'bg-blue-500/10 border-blue-500/30 shadow-[0_0_12px_rgba(59,130,246,0.08)]'
+          : 'border-transparent hover:bg-white/5 hover:border-white/10'
       }`}
     >
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="text-muted-foreground group-hover:text-foreground cursor-grab text-xs select-none transition-colors">⠿</span>
-        </TooltipTrigger>
-        <TooltipContent side="left">Drag to reorder</TooltipContent>
-      </Tooltip>
+      <span className="text-white/20 group-hover:text-white/40 cursor-grab transition-colors"><GripVertical size={14} /></span>
 
       <div className="flex-1 min-w-0">
         {editing ? (
-          <Input
+          <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -83,65 +56,56 @@ function FloorItem({
               if (e.key === 'Enter') handleRename();
               if (e.key === 'Escape') { setName(floor.name); setEditing(false); }
             }}
-            className="h-6 text-xs"
+            className="w-full h-6 px-1.5 text-xs bg-white/10 border border-blue-500/50 rounded text-white focus:outline-none"
             autoFocus
             onClick={(e) => e.stopPropagation()}
           />
         ) : (
-          <div className="flex items-center gap-1">
-            <span className="text-xs font-medium text-foreground truncate">
+          <div className="flex items-center gap-1.5">
+            <span className={`text-xs font-medium truncate ${isActive ? 'text-blue-400' : 'text-white/70'}`}>
               {floor.name}
             </span>
             {isDefault && (
               <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="text-yellow-600 text-xs">★</span>
-                </TooltipTrigger>
-                <TooltipContent>Default floor</TooltipContent>
+                <TooltipTrigger asChild><Star size={10} className="text-amber-400 fill-amber-400" /></TooltipTrigger>
+                <TooltipContent className="bg-[#1e293b] border-white/10 text-white text-xs">Default floor</TooltipContent>
+              </Tooltip>
+            )}
+            {hasLinks && (
+              <Tooltip>
+                <TooltipTrigger asChild><Link2 size={10} className="text-white/30" /></TooltipTrigger>
+                <TooltipContent className="bg-[#1e293b] border-white/10 text-white text-xs">Has cross-floor links</TooltipContent>
               </Tooltip>
             )}
           </div>
         )}
-        <div className="text-[10px] text-muted-foreground">
-          L{floor.floor_number} • {floor.width_m}×{floor.height_m}m
-          {hasLinks && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="ml-1">🔗</span>
-              </TooltipTrigger>
-              <TooltipContent>Has cross-floor links</TooltipContent>
-            </Tooltip>
-          )}
+        <div className="text-[10px] text-white/30 mt-0.5">
+          L{floor.floor_number} · {floor.width_m}×{floor.height_m}m
         </div>
       </div>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+          <button
+            className="p-1 rounded opacity-0 group-hover:opacity-100 text-white/40 hover:text-white hover:bg-white/10 transition-all"
             onClick={(e) => e.stopPropagation()}
           >
-            <span className="text-xs">⋯</span>
-          </Button>
+            <MoreHorizontal size={14} />
+          </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-36">
-          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditing(true); }}>
-            ✏️ Rename
+        <DropdownMenuContent align="end" className="w-36 bg-[#1e293b] border-white/10">
+          <DropdownMenuItem className="text-white/80 text-xs focus:bg-white/10 focus:text-white gap-2" onClick={(e) => { e.stopPropagation(); setEditing(true); }}>
+            <Pencil size={12} /> Rename
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDuplicate(); }}>
-            📋 Duplicate
+          <DropdownMenuItem className="text-white/80 text-xs focus:bg-white/10 focus:text-white gap-2" onClick={(e) => { e.stopPropagation(); onDuplicate(); }}>
+            <Copy size={12} /> Duplicate
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onSetDefault(); }}>
-            {isDefault ? '★ Default' : '☆ Set as default'}
+          <DropdownMenuItem className="text-white/80 text-xs focus:bg-white/10 focus:text-white gap-2" onClick={(e) => { e.stopPropagation(); onSetDefault(); }}>
+            <Star size={12} /> {isDefault ? 'Default' : 'Set default'}
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            className="text-destructive focus:text-destructive"
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          >
-            🗑 Delete
+          <DropdownMenuSeparator className="bg-white/10" />
+          <DropdownMenuItem className="text-red-400 text-xs focus:bg-red-500/10 focus:text-red-400 gap-2" onClick={(e) => { e.stopPropagation(); onDelete(); }}>
+            <Trash2 size={12} /> Delete
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -159,9 +123,7 @@ export default function FloorPanel() {
 
   const handleAdd = useCallback(async () => {
     const newFloor = await addFloor({});
-    if (newFloor) {
-      await switchFloor(newFloor.id);
-    }
+    if (newFloor) await switchFloor(newFloor.id);
   }, [addFloor, switchFloor]);
 
   const handleDelete = useCallback(async (floorId: string) => {
@@ -172,9 +134,7 @@ export default function FloorPanel() {
 
   const handleDuplicate = useCallback(async (floorId: string) => {
     const newFloor = await duplicateFloor(floorId);
-    if (newFloor) {
-      await switchFloor(newFloor.id);
-    }
+    if (newFloor) await switchFloor(newFloor.id);
   }, [duplicateFloor, switchFloor]);
 
   const handleRename = useCallback(async (floorId: string, name: string) => {
@@ -182,22 +142,12 @@ export default function FloorPanel() {
   }, [updateFloor]);
 
   const handleSetDefault = useCallback(async (floorId: string) => {
-    try {
-      await setDefaultFloor(floorId);
-    } catch (error) {
-      console.error('Failed to set default floor:', error);
-    }
+    try { await setDefaultFloor(floorId); } catch (error) { console.error('Failed to set default floor:', error); }
   }, [setDefaultFloor]);
 
   const makeDragHandlers = (index: number) => ({
-    onDragStart: (e: React.DragEvent) => {
-      setDragIdx(index);
-      e.dataTransfer.effectAllowed = 'move';
-    },
-    onDragOver: (e: React.DragEvent) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-    },
+    onDragStart: (e: React.DragEvent) => { setDragIdx(index); e.dataTransfer.effectAllowed = 'move'; },
+    onDragOver: (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; },
     onDrop: (e: React.DragEvent) => {
       e.preventDefault();
       if (dragIdx === null || dragIdx === index) return;
@@ -210,48 +160,41 @@ export default function FloorPanel() {
   });
 
   return (
-    <div className="w-52 bg-card border-r border-border flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
-        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Floors</h3>
-        <Button size="sm" className="h-7 text-xs" onClick={handleAdd}>
-          + Add
-        </Button>
+    <div className="w-52 bg-[#0a0f1a] border-r border-white/10 flex flex-col overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/10">
+        <h3 className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">Floors</h3>
+        <button
+          onClick={handleAdd}
+          className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium bg-blue-500/15 border border-blue-500/30 text-blue-400 hover:bg-blue-500/25 transition-all duration-150"
+        >
+          <Plus size={12} /> Add
+        </button>
       </div>
 
-      {/* Floor list */}
-      <ScrollArea className="flex-1 p-2">
+      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent p-2">
         {floors.length === 0 ? (
-          <div className="text-xs text-muted-foreground text-center py-4">
-            No floors yet.<br />Click &quot;+ Add&quot; to create one.
+          <div className="flex flex-col items-center justify-center py-8">
+            <Layers size={24} className="text-white/15 mb-2" />
+            <p className="text-xs text-white/30 text-center">No floors yet.<br />Click &quot;+ Add&quot; to create one.</p>
           </div>
         ) : (
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             {floors.map((floor, idx) => {
               const isDefault = !!(floor.metadata && (floor.metadata as Record<string, unknown>).is_default);
               return (
                 <FloorItem
-                  key={floor.id}
-                  floor={floor}
-                  isActive={floor.id === currentFloorId}
-                  isDefault={isDefault}
-                  onSelect={() => switchFloor(floor.id)}
-                  onDelete={() => handleDelete(floor.id)}
-                  onDuplicate={() => handleDuplicate(floor.id)}
-                  onRename={(name) => handleRename(floor.id, name)}
-                  onSetDefault={() => handleSetDefault(floor.id)}
-                  dragHandlers={makeDragHandlers(idx)}
+                  key={floor.id} floor={floor} isActive={floor.id === currentFloorId} isDefault={isDefault}
+                  onSelect={() => switchFloor(floor.id)} onDelete={() => handleDelete(floor.id)}
+                  onDuplicate={() => handleDuplicate(floor.id)} onRename={(name) => handleRename(floor.id, name)}
+                  onSetDefault={() => handleSetDefault(floor.id)} dragHandlers={makeDragHandlers(idx)}
                 />
               );
             })}
           </div>
         )}
-      </ScrollArea>
+      </div>
 
-      {/* Current floor info */}
-      {currentFloorId && (
-        <FloorSettings floorId={currentFloorId} />
-      )}
+      {currentFloorId && <FloorSettings floorId={currentFloorId} />}
     </div>
   );
 }
@@ -261,62 +204,31 @@ function FloorSettings({ floorId }: { floorId: string }) {
   const floor = floors.find((f) => f.id === floorId);
   if (!floor) return null;
 
+  const SettingInput = ({ label, ...props }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) => (
+    <div>
+      <label className="text-[10px] text-white/30 uppercase tracking-wider block mb-0.5">{label}</label>
+      <input
+        {...props}
+        className="w-full h-7 px-2 text-xs bg-white/5 border border-white/10 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50 transition-all duration-150"
+      />
+    </div>
+  );
+
   return (
-    <div className="border-t border-border bg-muted/30 p-3 space-y-2">
-      <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Floor Settings</h4>
+    <div className="border-t border-white/10 bg-white/[0.02] p-3 space-y-2">
+      <h4 className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">Floor Settings</h4>
       <div className="grid grid-cols-2 gap-1.5">
-        <div>
-          <Label className="text-[10px] text-muted-foreground">Grid (m)</Label>
-          <Input
-            type="number"
-            value={floor.grid_size_m}
-            min={0.1}
-            step={0.1}
-            onChange={(e) => updateFloor(floorId, { grid_size_m: Number(e.target.value) })}
-            className="h-7 text-xs mt-0.5"
-          />
-        </div>
-        <div>
-          <Label className="text-[10px] text-muted-foreground">Scale (px/m)</Label>
-          <Input
-            type="number"
-            value={floor.scale_px_per_m}
-            min={1}
-            onChange={(e) => updateFloor(floorId, { scale_px_per_m: Number(e.target.value) })}
-            className="h-7 text-xs mt-0.5"
-          />
-        </div>
-        <div>
-          <Label className="text-[10px] text-muted-foreground">Width (m)</Label>
-          <Input
-            type="number"
-            value={floor.width_m}
-            min={1}
-            onChange={(e) => updateFloor(floorId, { width_m: Number(e.target.value) })}
-            className="h-7 text-xs mt-0.5"
-          />
-        </div>
-        <div>
-          <Label className="text-[10px] text-muted-foreground">Height (m)</Label>
-          <Input
-            type="number"
-            value={floor.height_m}
-            min={1}
-            onChange={(e) => updateFloor(floorId, { height_m: Number(e.target.value) })}
-            className="h-7 text-xs mt-0.5"
-          />
-        </div>
+        <SettingInput label="Grid (m)" type="number" value={floor.grid_size_m} min={0.1} step={0.1}
+          onChange={(e) => updateFloor(floorId, { grid_size_m: Number(e.target.value) })} />
+        <SettingInput label="Scale (px/m)" type="number" value={floor.scale_px_per_m} min={1}
+          onChange={(e) => updateFloor(floorId, { scale_px_per_m: Number(e.target.value) })} />
+        <SettingInput label="Width (m)" type="number" value={floor.width_m} min={1}
+          onChange={(e) => updateFloor(floorId, { width_m: Number(e.target.value) })} />
+        <SettingInput label="Height (m)" type="number" value={floor.height_m} min={1}
+          onChange={(e) => updateFloor(floorId, { height_m: Number(e.target.value) })} />
       </div>
-      <div>
-        <Label className="text-[10px] text-muted-foreground">Background URL</Label>
-        <Input
-          type="text"
-          value={floor.background_image_url || ''}
-          placeholder="https://..."
-          onChange={(e) => updateFloor(floorId, { background_image_url: e.target.value || null })}
-          className="h-7 text-xs mt-0.5"
-        />
-      </div>
+      <SettingInput label="Background URL" type="text" value={floor.background_image_url || ''} placeholder="https://..."
+        onChange={(e) => updateFloor(floorId, { background_image_url: e.target.value || null })} />
     </div>
   );
 }
