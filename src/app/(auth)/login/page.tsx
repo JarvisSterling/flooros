@@ -6,6 +6,12 @@ import Link from 'next/link';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/client';
 
+const MESSAGE_MAP: Record<string, string> = {
+  signed_out: 'You have been signed out',
+  session_expired: 'Your session has expired',
+  auth_error: 'Could not authenticate. Please try again.',
+};
+
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
@@ -19,7 +25,8 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const message = searchParams.get('message');
+  const messageKey = searchParams.get('message');
+  const message = messageKey ? MESSAGE_MAP[messageKey] ?? null : null;
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -85,7 +92,7 @@ export default function LoginPage() {
             value={password}
             onChange={e => setPassword(e.target.value)}
             className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder-white/30 outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            placeholder="••••••••"
+            placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"
             required
           />
         </div>
