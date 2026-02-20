@@ -9,6 +9,7 @@ import StatusBadge from '@/components/dashboard/StatusBadge';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import { z } from 'zod';
 
+// M1: TODO — Add server actions for server-side validation. Currently relies on RLS for protection.
 const eventSchema = z.object({
   name: z.string().min(1, 'Required').max(100),
   slug: z.string().min(1, 'Required').regex(/^[a-z0-9-]+$/, 'Lowercase with hyphens only'),
@@ -31,6 +32,12 @@ export default function EventDetailPage() {
   const router = useRouter();
   const params = useParams();
   const eventId = params.id as string;
+  const { organization, profile } = useAuth();
+
+  // M2: Role-based access
+  const userRole = profile?.role ?? 'viewer';
+  const canEdit = userRole === 'owner' || userRole === 'admin' || userRole === 'editor';
+  const canDelete = userRole === 'owner' || userRole === 'admin';
 
   const [event, setEvent] = useState<EventWithCounts | null>(null);
   const [loading, setLoading] = useState(true);
@@ -48,8 +55,11 @@ export default function EventDetailPage() {
   const [showStatusChange, setShowStatusChange] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  const orgId = organization?.id;
+
   const loadEvent = useCallback(async () => {
-    const { data, error: err } = await getEvent(eventId);
+    if (!orgId) return;
+    const { data, error: err } = await getEvent(eventId, orgId);
     if (err || !data) {
       setError(err || 'Event not found');
       setLoading(false);
@@ -65,11 +75,12 @@ export default function EventDetailPage() {
       venue: data.venue || '',
     });
     setLoading(false);
-  }, [eventId]);
+  }, [eventId, orgId]);
 
   useEffect(() => { loadEvent(); }, [loadEvent]);
 
   const handleSave = async () => {
+    if (!orgId) return;
     const result = eventSchema.safeParse(form);
     if (!result.success) {
       const errs: FormErrors = {};
@@ -77,9 +88,14 @@ export default function EventDetailPage() {
       setFormErrors(errs);
       return;
     }
+    // m2: Date validation
+    if (form.start_date && form.end_date && form.end_date < form.start_date) {
+      setFormErrors({ end_date: 'End date must be on or after start date' });
+      return;
+    }
     setSaving(true);
     setSaveMsg(null);
-    const { error: err } = await updateEvent(eventId, {
+    const { error: err } = await updateEvent(eventId, orgId, {
       name: form.name,
       slug: form.slug,
       description: form.description || null,
@@ -94,24 +110,26 @@ export default function EventDetailPage() {
   };
 
   const handleStatusChange = async () => {
-    if (!event) return;
+    if (!event || !orgId) return;
     const transition = statusTransitions[event.status];
     if (!transition) return;
-    const { error: err } = await updateEvent(eventId, { status: transition.next as 'draft' | 'published' | 'live' | 'archived' });
+    const { error: err } = await updateEvent(eventId, orgId, { status: transition.next as 'draft' | 'published' | 'live' | 'archived' });
     if (!err) await loadEvent();
     setShowStatusChange(false);
   };
 
   const handleDelete = async () => {
+    if (!orgId) return;
     setDeleting(true);
-    const { error: err } = await deleteEvent(eventId);
+    const { error: err } = await deleteEvent(eventId, orgId);
     if (!err) router.push('/dashboard/events');
     setDeleting(false);
     setShowDelete(false);
   };
 
   const handleDuplicate = async () => {
-    const { data } = await duplicateEvent(eventId);
+    if (!orgId) return;
+    const { data } = await duplicateEvent(eventId, orgId);
     if (data) router.push('/dashboard/events/' + data.id);
   };
 
@@ -162,17 +180,23 @@ export default function EventDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {transition && (
+          {/* M2: Only show status change for editors+ */}
+          {transition && canEdit && (
             <button onClick={() => setShowStatusChange(true)} className={`px-4 py-2 text-white text-sm font-medium rounded-lg transition-colors ${transition.color}`}>
               {transition.label}
             </button>
           )}
-          <button onClick={handleDuplicate} className="px-3 py-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg text-sm transition-colors">
-            Duplicate
-          </button>
-          <button onClick={() => setShowDelete(true)} className="px-3 py-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg text-sm transition-colors">
-            Delete
-          </button>
+          {canEdit && (
+            <button onClick={handleDuplicate} className="px-3 py-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg text-sm transition-colors">
+              Duplicate
+            </button>
+          )}
+          {/* M2: Only owners/admins can delete */}
+          {canDelete && (
+            <button onClick={() => setShowDelete(true)} className="px-3 py-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg text-sm transition-colors">
+              Delete
+            </button>
+          )}
         </div>
       </div>
 
@@ -219,40 +243,48 @@ export default function EventDetailPage() {
 
       {tab === 'settings' && (
         <div className="max-w-2xl rounded-xl border border-white/10 bg-white/5 p-6 space-y-5">
+          {!canEdit && (
+            <div className="px-3 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-sm">
+              You have view-only access. Contact an admin to make changes.
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-white/70 mb-1.5">Event Name *</label>
-            <input type="text" value={form.name} onChange={(e) => { setForm(f => ({ ...f, name: e.target.value })); setFormErrors(fe => ({ ...fe, name: undefined })); }} className={inputClass} />
+            <input type="text" value={form.name} disabled={!canEdit} onChange={(e) => { setForm(f => ({ ...f, name: e.target.value })); setFormErrors(fe => ({ ...fe, name: undefined })); }} className={inputClass + (!canEdit ? ' opacity-50 cursor-not-allowed' : '')} />
             {formErrors.name && <p className="text-red-400 text-xs mt-1">{formErrors.name}</p>}
           </div>
           <div>
             <label className="block text-sm font-medium text-white/70 mb-1.5">Slug *</label>
-            <input type="text" value={form.slug} onChange={(e) => { setForm(f => ({ ...f, slug: e.target.value })); setFormErrors(fe => ({ ...fe, slug: undefined })); }} className={inputClass} />
+            <input type="text" value={form.slug} disabled={!canEdit} onChange={(e) => { setForm(f => ({ ...f, slug: e.target.value })); setFormErrors(fe => ({ ...fe, slug: undefined })); }} className={inputClass + (!canEdit ? ' opacity-50 cursor-not-allowed' : '')} />
             {formErrors.slug && <p className="text-red-400 text-xs mt-1">{formErrors.slug}</p>}
           </div>
           <div>
             <label className="block text-sm font-medium text-white/70 mb-1.5">Description</label>
-            <textarea value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))} rows={4} className={inputClass + ' resize-none'} />
+            <textarea value={form.description} disabled={!canEdit} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))} rows={4} className={inputClass + ' resize-none' + (!canEdit ? ' opacity-50 cursor-not-allowed' : '')} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-white/70 mb-1.5">Start Date</label>
-              <input type="date" value={form.start_date} onChange={(e) => setForm(f => ({ ...f, start_date: e.target.value }))} className={inputClass} />
+              <input type="date" value={form.start_date} disabled={!canEdit} onChange={(e) => setForm(f => ({ ...f, start_date: e.target.value }))} className={inputClass + (!canEdit ? ' opacity-50 cursor-not-allowed' : '')} />
             </div>
             <div>
               <label className="block text-sm font-medium text-white/70 mb-1.5">End Date</label>
-              <input type="date" value={form.end_date} onChange={(e) => setForm(f => ({ ...f, end_date: e.target.value }))} className={inputClass} />
+              <input type="date" value={form.end_date} disabled={!canEdit} onChange={(e) => setForm(f => ({ ...f, end_date: e.target.value }))} className={inputClass + (!canEdit ? ' opacity-50 cursor-not-allowed' : '')} />
+              {formErrors.end_date && <p className="text-red-400 text-xs mt-1">{formErrors.end_date}</p>}
             </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-white/70 mb-1.5">Venue</label>
-            <input type="text" value={form.venue} onChange={(e) => setForm(f => ({ ...f, venue: e.target.value }))} className={inputClass} />
+            <input type="text" value={form.venue} disabled={!canEdit} onChange={(e) => setForm(f => ({ ...f, venue: e.target.value }))} className={inputClass + (!canEdit ? ' opacity-50 cursor-not-allowed' : '')} />
           </div>
-          <div className="flex items-center gap-3 pt-2">
-            <button onClick={handleSave} disabled={saving} className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors">
-              {saving ? 'Saving...' : 'Save Changes'}
-            </button>
-            {saveMsg && <span className={`text-sm ${saveMsg.startsWith('Error') ? 'text-red-400' : 'text-green-400'}`}>{saveMsg}</span>}
-          </div>
+          {canEdit && (
+            <div className="flex items-center gap-3 pt-2">
+              <button onClick={handleSave} disabled={saving} className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors">
+                {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+              {saveMsg && <span className={`text-sm ${saveMsg.startsWith('Error') ? 'text-red-400' : 'text-green-400'}`}>{saveMsg}</span>}
+            </div>
+          )}
         </div>
       )}
 
