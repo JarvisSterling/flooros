@@ -66,7 +66,7 @@ export default function PropertiesPanel() {
 
   if (selectedObjectIds.size === 0) {
     return (
-      <div className="w-64 bg-[#0a0f1a] border-l border-white/10 flex flex-col items-center justify-center p-8">
+      <div className="h-full bg-transparent flex flex-col items-center justify-center p-8">
         <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mb-3">
           <MousePointer2 size={20} className="text-white/20" />
         </div>
@@ -77,7 +77,7 @@ export default function PropertiesPanel() {
 
   if (selectedObjectIds.size > 1) {
     return (
-      <div className="w-64 bg-[#0a0f1a] border-l border-white/10 flex flex-col items-center justify-center p-8">
+      <div className="h-full bg-transparent flex flex-col items-center justify-center p-8">
         <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-3">
           <Layers size={20} className="text-blue-400" />
         </div>
@@ -119,7 +119,7 @@ export default function PropertiesPanel() {
   };
 
   return (
-    <div className="w-64 bg-[#0a0f1a] border-l border-white/10 flex flex-col overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+    <div className="h-full bg-transparent flex flex-col overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
       {/* Header */}
       <div className="px-3 py-2.5 border-b border-white/10 flex items-center justify-between">
         <h3 className="text-xs font-semibold text-white/70">Properties</h3>

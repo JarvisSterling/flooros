@@ -160,7 +160,7 @@ export default function FloorPanel() {
   });
 
   return (
-    <div className="w-52 bg-[#0a0f1a] border-r border-white/10 flex flex-col overflow-hidden">
+    <div className="h-full bg-transparent flex flex-col overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/10">
         <h3 className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">Floors</h3>
         <button

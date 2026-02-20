@@ -32,9 +32,9 @@ export default function LayerPanel() {
   };
 
   return (
-    <div className="w-56 bg-[#0a0f1a] border-r border-white/10 overflow-hidden flex flex-col">
-      <div className="px-3 py-2.5 border-b border-white/10">
-        <h3 className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">Layers</h3>
+    <div className="h-full bg-transparent overflow-hidden flex flex-col">
+      <div className="px-4 py-3 border-b border-white/[0.06]">
+        <h3 className="text-[11px] font-semibold text-white/50 uppercase tracking-wider">Layers</h3>
       </div>
       <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent p-2">
         <div className="space-y-1">

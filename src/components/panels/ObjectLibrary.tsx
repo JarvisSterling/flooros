@@ -32,9 +32,9 @@ export default function ObjectLibrary({ className }: ObjectLibraryProps) {
   };
 
   return (
-    <div className={`w-56 bg-[#0a0f1a] border-r border-white/10 flex flex-col overflow-hidden ${className ?? ''}`}>
-      <div className="p-3 border-b border-white/10">
-        <h3 className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2">Object Library</h3>
+    <div className={`h-full bg-transparent flex flex-col overflow-hidden ${className ?? ''}`}>
+      <div className="px-4 py-3 border-b border-white/[0.06]">
+        <h3 className="text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-2">Object Library</h3>
         <div className="relative">
           <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/30" />
           <input
