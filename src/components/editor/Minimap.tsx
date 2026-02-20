@@ -25,16 +25,17 @@ export default function Minimap() {
     return { bounds: { minX, minY, maxX, maxY, rangeX, rangeY }, scale };
   }, [objects]);
 
-  // Viewport rect in world meters
   const vpX = (-panX / zoom) / pxPerMeter;
   const vpY = (-panY / zoom) / pxPerMeter;
   const vpW = stageWidth / zoom / pxPerMeter;
   const vpH = stageHeight / zoom / pxPerMeter;
 
   return (
-    <div className="absolute bottom-3 right-3 bg-white border border-gray-300 rounded shadow-lg overflow-hidden" style={{ width: MM_W, height: MM_H }}>
+    <div
+      className="absolute bottom-3 right-3 bg-[#0d1321]/90 backdrop-blur-md border border-white/10 rounded-xl shadow-xl overflow-hidden"
+      style={{ width: MM_W, height: MM_H }}
+    >
       <svg width={MM_W} height={MM_H} viewBox={`0 0 ${MM_W} ${MM_H}`}>
-        {/* Objects */}
         {Array.from(objects.values()).map((o) => (
           <rect
             key={o.id}
@@ -42,21 +43,25 @@ export default function Minimap() {
             y={(o.y - bounds.minY) * scale}
             width={Math.max((o.width ?? 0.5) * scale, 2)}
             height={Math.max((o.height ?? 0.5) * scale, 2)}
-            fill="#4A90D9"
-            opacity={0.6}
+            fill="#3b82f6"
+            opacity={0.5}
+            rx={1}
           />
         ))}
-        {/* Viewport */}
         <rect
           x={(vpX - bounds.minX) * scale}
           y={(vpY - bounds.minY) * scale}
           width={vpW * scale}
           height={vpH * scale}
           fill="none"
-          stroke="#FF3333"
+          stroke="#3b82f6"
           strokeWidth={1.5}
+          strokeDasharray="3 2"
+          opacity={0.8}
+          rx={2}
         />
       </svg>
+      <div className="absolute bottom-1 right-2 text-[9px] text-white/20 font-mono">{Math.round(zoom * 100)}%</div>
     </div>
   );
 }
