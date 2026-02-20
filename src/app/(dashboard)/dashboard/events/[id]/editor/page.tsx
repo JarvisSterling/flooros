@@ -14,23 +14,24 @@ import FloorOverview from '@/components/panels/FloorOverview';
 import WayfindingPanel from '@/components/panels/WayfindingPanel';
 import AnchorPanel from '@/components/panels/AnchorPanel';
 import CrossFloorLinkPanel from '@/components/panels/CrossFloorLinkPanel';
+import BoothPanel from '@/components/panels/BoothPanel';
 import useKeyboardShortcuts from '@/hooks/useKeyboardShortcuts';
 import useAutoSave from '@/hooks/useAutoSave';
 
 const Canvas = dynamic(() => import('@/components/editor/Canvas'), { ssr: false });
 
-type PanelType = 'layers' | 'library' | 'floors';
+type PanelType = 'layers' | 'library' | 'floors' | 'booths';
 
 export default function EventEditorPage() {
   const params = useParams();
   const router = useRouter();
   const eventId = params.id as string;
   const [loading, setLoading] = useState(true);
-  const [event, setEvent] = useState<any>(null);
+  const [event, setEvent] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activePanel, setActivePanel] = useState<PanelType>('layers');
 
-  const { loadFloors, floorPlanId } = useEditorStore();
+  const { loadFloors, loadBooths, floorPlanId } = useEditorStore();
 
   useKeyboardShortcuts();
   useAutoSave();
@@ -66,12 +67,13 @@ export default function EventEditorPage() {
         return;
       }
 
-      setEvent(eventData);
+      setEvent(eventData as Record<string, unknown>);
       await loadFloors(eventId);
+      await loadBooths(eventId);
       setLoading(false);
     }
     loadEvent();
-  }, [eventId, router, loadFloors]);
+  }, [eventId, router, loadFloors, loadBooths]);
 
   if (loading) {
     return (
@@ -93,7 +95,7 @@ export default function EventEditorPage() {
             onClick={() => router.push('/dashboard/events/' + eventId)}
             className="text-blue-400 hover:underline"
           >
-            ← Back to event
+             Back to event
           </button>
         </div>
       </div>
@@ -108,27 +110,34 @@ export default function EventEditorPage() {
         <div className="w-72 border-r border-gray-800 overflow-y-auto">
           <div className="flex border-b border-gray-800">
             <button
-              className={'flex-1 px-3 py-2 text-xs ' + (activePanel === 'layers' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white')}
+              className={'flex-1 px-2 py-2 text-xs ' + (activePanel === 'layers' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white')}
               onClick={() => setActivePanel('layers')}
             >
               Layers
             </button>
             <button
-              className={'flex-1 px-3 py-2 text-xs ' + (activePanel === 'library' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white')}
+              className={'flex-1 px-2 py-2 text-xs ' + (activePanel === 'library' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white')}
               onClick={() => setActivePanel('library')}
             >
               Library
             </button>
             <button
-              className={'flex-1 px-3 py-2 text-xs ' + (activePanel === 'floors' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white')}
+              className={'flex-1 px-2 py-2 text-xs ' + (activePanel === 'floors' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white')}
               onClick={() => setActivePanel('floors')}
             >
               Floors
+            </button>
+            <button
+              className={'flex-1 px-2 py-2 text-xs ' + (activePanel === 'booths' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white')}
+              onClick={() => setActivePanel('booths')}
+            >
+              Booths
             </button>
           </div>
           {activePanel === 'layers' && <LayerPanel />}
           {activePanel === 'library' && <ObjectLibrary />}
           {activePanel === 'floors' && <FloorPanel />}
+          {activePanel === 'booths' && <BoothPanel />}
         </div>
 
         <div className="flex-1 relative">

@@ -136,20 +136,23 @@ interface EditorState {
   selectAll: () => void;
 
   // Booths
-  booths: Map<string, Booth>;       // keyed by object_id
-  boothProfiles: Map<string, BoothProfile>; // keyed by booth_id
+  booths: Map<string, Booth>;
+  boothProfiles: Map<string, BoothProfile>;
+  boothsLoading: boolean;
   contextMenu: { x: number; y: number; objectId: string } | null;
 
   setContextMenu: (menu: { x: number; y: number; objectId: string } | null) => void;
   convertToBooth: (objectId: string, eventId?: string) => Promise<void>;
   updateBoothStatus: (objectId: string, status: BoothStatus) => void;
   updateBoothNumber: (objectId: string, number: string) => void;
+  updateBoothField: (objectId: string, field: keyof Booth, value: unknown) => void;
   updateBoothExhibitor: (objectId: string, exhibitorId: string | null, exhibitorName?: string) => void;
   updateBoothProfile: (objectId: string, profile: Partial<BoothProfile>) => void;
   removeBooth: (objectId: string) => Promise<void>;
-  loadBooths: (eventId: string) => Promise<void>;
+  loadBooths: (eventId: string, floorId?: string) => Promise<void>;
   setBooth: (objectId: string, booth: Booth) => void;
   setBoothProfile: (boothId: string, profile: BoothProfile) => void;
+  getBoothForObject: (objectId: string) => Booth | undefined;
 
   // Multi-floor
   floors: FloorPlan[];
@@ -212,6 +215,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   previousTool: null,
   booths: new Map(),
   boothProfiles: new Map(),
+  boothsLoading: false,
   contextMenu: null,
   syncError: null,
   floors: [],
@@ -221,17 +225,20 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   clearSyncError: () => set({ syncError: null }),
   setContextMenu: (menu) => set({ contextMenu: menu }),
 
-  convertToBooth: async (objectId, eventId = 'demo') => {
-    const { objects, booths, updateObject } = get();
+  getBoothForObject: (objectId) => get().booths.get(objectId),
+
+  convertToBooth: async (objectId, eventId) => {
+    const { objects, booths, updateObject, currentFloorId, floors } = get();
+    const resolvedEventId = eventId || get().eventId;
     const obj = objects.get(objectId);
     if (!obj) return;
-    if (booths.has(objectId)) return; // already a booth
+    if (booths.has(objectId)) return;
 
+    const currentFloor = floors.find((f) => f.id === currentFloorId);
     const existingNumbers = Array.from(booths.values()).map((b) => b.booth_number);
-    const boothNumber = generateBoothNumber(existingNumbers);
+    const boothNumber = generateBoothNumber(existingNumbers, currentFloor?.floor_number);
     const sizeSqm = (obj.width ?? 1) * (obj.height ?? 1);
 
-    // Save original style before converting, then update to booth type
     const originalStyle = { ...obj.style as Record<string, unknown> };
     const originalType = obj.type;
     const originalLayer = obj.layer;
@@ -242,18 +249,21 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       metadata: { ...obj.metadata, booth_number: boothNumber, booth_status: 'available' as BoothStatus, _originalStyle: originalStyle, _originalType: originalType, _originalLayer: originalLayer },
     });
 
-    // Create booth in API
     try {
       const res = await fetch('/api/booths', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           object_id: objectId,
-          event_id: eventId,
+          event_id: resolvedEventId,
+          floor_id: currentFloorId,
           booth_number: boothNumber,
           status: 'available',
-          category: (obj.metadata as Record<string, unknown>)?.boothCategory || 'standard',
+          category: 'standard',
           size_sqm: sizeSqm,
+          size_category: null,
+          name: null,
+          price: null,
           amenities: [],
         }),
       });
@@ -266,10 +276,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         });
       }
     } catch {
-      // Offline fallback — store locally
       const localBooth: Booth = {
-        id: uuidv4(), object_id: objectId, event_id: eventId,
-        booth_number: boothNumber, status: 'available', category: 'standard',
+        id: uuidv4(), object_id: objectId, event_id: resolvedEventId,
+        floor_id: currentFloorId, booth_number: boothNumber, name: null,
+        status: 'available', category: 'standard', size_category: null,
         size_sqm: sizeSqm, price: null, pricing_tier: null,
         exhibitor_id: null, max_capacity: null, amenities: [],
         created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
@@ -296,7 +306,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       metadata: { ...obj.metadata, booth_status: status },
     });
 
-    // Sync to API — revert on failure
     const prevBooth = booth;
     const prevStyle = obj.style;
     const prevMetadata = obj.metadata;
@@ -306,7 +315,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       body: JSON.stringify({ status }),
     }).then((res) => {
       if (!res.ok) throw new Error(`Booth status sync failed: ${res.status}`);
-    }).catch((err) => {
+    }).catch((err: Error) => {
       console.error('updateBoothStatus sync error:', err);
       set((s) => { const m = new Map(s.booths); m.set(objectId, prevBooth); return { booths: m, syncError: `Failed to sync booth status: ${err.message}` }; });
       get().updateObject(objectId, { style: prevStyle, metadata: prevMetadata });
@@ -331,10 +340,31 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       body: JSON.stringify({ booth_number: number }),
     }).then((res) => {
       if (!res.ok) throw new Error(`Booth number sync failed: ${res.status}`);
-    }).catch((err) => {
+    }).catch((err: Error) => {
       console.error('updateBoothNumber sync error:', err);
       set((s) => { const m = new Map(s.booths); m.set(objectId, prevBooth); return { booths: m, syncError: `Failed to sync booth number: ${err.message}` }; });
       get().updateObject(objectId, { metadata: prevMetadata });
+    });
+  },
+
+  updateBoothField: (objectId, field, value) => {
+    const { booths } = get();
+    const booth = booths.get(objectId);
+    if (!booth) return;
+
+    const updated = { ...booth, [field]: value, updated_at: new Date().toISOString() };
+    set((s) => { const m = new Map(s.booths); m.set(objectId, updated); return { booths: m }; });
+
+    const prevBooth = booth;
+    fetch(`/api/booths/${booth.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [field]: value }),
+    }).then((res) => {
+      if (!res.ok) throw new Error(`Booth field sync failed: ${res.status}`);
+    }).catch((err: Error) => {
+      console.error(`updateBoothField(${field}) sync error:`, err);
+      set((s) => { const m = new Map(s.booths); m.set(objectId, prevBooth); return { booths: m, syncError: `Failed to sync booth ${field}: ${err.message}` }; });
     });
   },
 
@@ -356,7 +386,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       body: JSON.stringify({ exhibitor_id: exhibitorId }),
     }).then((res) => {
       if (!res.ok) throw new Error(`Booth exhibitor sync failed: ${res.status}`);
-    }).catch((err) => {
+    }).catch((err: Error) => {
       console.error('updateBoothExhibitor sync error:', err);
       set((s) => { const m = new Map(s.booths); m.set(objectId, prevBooth); return { booths: m, syncError: `Failed to sync exhibitor: ${err.message}` }; });
       get().updateObject(objectId, { metadata: prevMetadata });
@@ -387,13 +417,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const obj = objects.get(objectId);
     if (!booth) return;
 
-    // Revert object to original style (or default furniture style)
     if (obj) {
       const meta = obj.metadata as Record<string, unknown>;
       const restoredStyle = (meta?._originalStyle as Record<string, unknown>) || { fill: '#4A90D9', stroke: '#333333', strokeWidth: 1, opacity: 1 };
       const restoredType = (meta?._originalType as string) || 'furniture';
       const restoredLayer = (meta?._originalLayer as string) || 'furniture';
-      // Remove booth-specific metadata keys
       const cleanMeta = { ...meta };
       delete cleanMeta.booth_number;
       delete cleanMeta.booth_status;
@@ -418,13 +446,16 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
     try {
       await fetch(`/api/booths/${booth.id}`, { method: 'DELETE' });
-    } catch {}
+    } catch { /* best effort */ }
   },
 
-  loadBooths: async (eventId) => {
+  loadBooths: async (eventId, floorId) => {
+    set({ boothsLoading: true });
     try {
-      const res = await fetch(`/api/booths?event_id=${eventId}`);
-      if (!res.ok) return;
+      let url = `/api/booths?event_id=${eventId}`;
+      if (floorId) url += `&floor_id=${floorId}`;
+      const res = await fetch(url);
+      if (!res.ok) { set({ boothsLoading: false }); return; }
       const data = await res.json() as Array<Booth & { booth_profiles?: BoothProfile[] }>;
       const bm = new Map<string, Booth>();
       const pm = new Map<string, BoothProfile>();
@@ -435,8 +466,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           pm.set(booth.id, booth_profiles[0]);
         }
       }
-      set({ booths: bm, boothProfiles: pm });
-    } catch {}
+      set({ booths: bm, boothProfiles: pm, boothsLoading: false });
+    } catch {
+      set({ boothsLoading: false });
+    }
   },
 
   setBooth: (objectId, booth) => set((s) => {
@@ -455,7 +488,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const data = (await res.json()) as FloorPlan[];
       const sorted = data.sort((a, b) => a.sort_order - b.sort_order);
       set({ floors: sorted, eventId });
-      // If no current floor selected, select first
       const { currentFloorId } = get();
       if (!currentFloorId && sorted.length > 0) {
         await get().switchFloor(sorted[0].id);
@@ -466,8 +498,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   switchFloor: async (floorId) => {
-    // Save current floor objects first if dirty
-    const { isDirty, floorPlanId, objects } = get();
+    const { isDirty, floorPlanId, objects, eventId } = get();
     if (isDirty && floorPlanId !== 'demo') {
       try {
         await fetch(`/api/floor-plans/${floorPlanId}/objects/bulk`, {
@@ -478,12 +509,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       } catch { /* best effort */ }
     }
 
-    // Load new floor's objects
     try {
       const res = await fetch(`/api/floor-plans/${floorId}`);
       if (!res.ok) return;
-      const data = await res.json();
-      const objs = (data.floor_plan_objects || []) as FloorPlanObject[];
+      const data = await res.json() as Record<string, unknown>;
+      const objs = ((data.floor_plan_objects || []) as FloorPlanObject[]);
       const m = new Map<string, FloorPlanObject>();
       objs.forEach((o) => m.set(o.id, o));
       set({
@@ -495,9 +525,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         redoStack: [],
         isDirty: false,
         saveStatus: 'saved',
-        backgroundImageUrl: data.background_image_url || null,
-        gridSize: data.grid_size_m || 1,
+        backgroundImageUrl: (data.background_image_url as string) || null,
+        gridSize: (data.grid_size_m as number) || 1,
       });
+      // Reload booths for this floor
+      await get().loadBooths(eventId, floorId);
     } catch {
       console.error('Failed to switch floor');
     }
@@ -578,11 +610,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   reorderFloors: async (floorIds) => {
-    // Store original state for rollback
     const { floors } = get();
     const originalFloors = [...floors];
     
-    // Optimistic update
     const reordered = floorIds
       .map((id, i) => {
         const f = floors.find((fl) => fl.id === id);
@@ -599,12 +629,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       });
       
       if (!response.ok) {
-        // Rollback on API failure
         set({ floors: originalFloors });
         throw new Error('Failed to reorder floors');
       }
     } catch (error) {
-      // Rollback on network or other failure
       set({ floors: originalFloors });
       console.error('Floor reorder failed:', error);
       throw error;
@@ -614,7 +642,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setDefaultFloor: async (floorId) => {
     const { floors } = get();
     try {
-      // First, remove default flag from all floors
       const updates = floors.map(async (floor) => {
         const isDefault = floor.id === floorId;
         const metadata = { ...floor.metadata, is_default: isDefault };
@@ -638,7 +665,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   setFloors: (floors) => set({ floors }),
 
-  setZoom: (zoom, centerX, centerY) => {
+  setZoom: (zoom) => {
     const clamped = Math.min(5, Math.max(0.1, zoom));
     set({ zoom: clamped });
   },
@@ -734,7 +761,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     };
   }),
 
-  // F3: Copy/Paste
   copySelection: () => {
     const { objects, selectedObjectIds } = get();
     const copied = Array.from(selectedObjectIds)
@@ -743,7 +769,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({ clipboard: copied.map((o) => ({ ...o, style: { ...o.style as Record<string, unknown> }, metadata: { ...o.metadata } })) });
   },
   pasteClipboard: (offsetX = 0.5, offsetY = 0.5) => {
-    const { clipboard, addObject } = get();
+    const { clipboard } = get();
     if (clipboard.length === 0) return;
     const newIds: string[] = [];
     const now = new Date().toISOString();
@@ -760,7 +786,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         created_at: now,
         updated_at: now,
       };
-      // Use set directly to avoid multiple pushHistory calls
       set((s) => {
         const m = new Map(s.objects);
         m.set(newObj.id, newObj);
@@ -770,16 +795,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({ selectedObjectIds: new Set(newIds) });
   },
 
-  // F1: Background image
   setBackgroundImage: (url) => set({ backgroundImageUrl: url, isDirty: true, saveStatus: 'unsaved' as const }),
   setBackgroundOpacity: (opacity) => set({ backgroundOpacity: opacity }),
 
-  // F2: Auto-save status
   setSaveStatus: (status) => set({ saveStatus: status }),
   markDirty: () => set({ isDirty: true, saveStatus: 'unsaved' }),
   markClean: () => set({ isDirty: false, saveStatus: 'saved' }),
 
-  // F6: Space pan
   startSpacePan: () => {
     const { activeTool, isSpacePanning } = get();
     if (isSpacePanning) return;
@@ -790,7 +812,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({ isSpacePanning: false, previousTool: null, activeTool: previousTool || 'select' });
   },
 
-  // F5: Select all
   selectAll: () => {
     const { objects, layers } = get();
     const ids: string[] = [];

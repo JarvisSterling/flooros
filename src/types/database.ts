@@ -1,4 +1,4 @@
-// Auto-generated types matching PRD §4.4 database schema
+// Auto-generated types matching PRD 4.4 database schema
 
 export interface Event {
   id: string;
@@ -82,14 +82,18 @@ export type FloorPlanObjectUpdate = Partial<Omit<FloorPlanObject, 'id' | 'create
 
 export type BoothStatus = 'available' | 'reserved' | 'sold' | 'blocked' | 'premium';
 export type BoothCategory = 'standard' | 'island' | 'corner' | 'inline' | 'peninsula';
+export type BoothSizeCategory = 'small' | 'medium' | 'large' | 'xl';
 
 export interface Booth {
   id: string;
   object_id: string;
   event_id: string;
+  floor_id: string | null;
   booth_number: string;
+  name: string | null;
   status: BoothStatus;
   category: BoothCategory | null;
+  size_category: BoothSizeCategory | null;
   size_sqm: number | null;
   price: number | null;
   pricing_tier: string | null;
