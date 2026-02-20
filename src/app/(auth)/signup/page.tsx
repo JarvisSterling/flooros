@@ -27,7 +27,7 @@ export default function SignupPage() {
     setError(null);
     const parsed = signupSchema.safeParse({ email, password, confirmPassword });
     if (!parsed.success) {
-      setError(parsed.error.errors[0].message);
+      setError(parsed.error.errors[0]?.message ?? "Invalid input");
       return;
     }
     setLoading(true);
