@@ -17,7 +17,7 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     setError(null);
     const parsed = schema.safeParse({ email });
-    if (!parsed.success) { setError(parsed.error.errors[0].message); return; }
+    if (!parsed.success) { setError(parsed.error.errors[0]?.message ?? "Invalid input"); return; }
     setLoading(true);
     const supabase = createClient();
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
