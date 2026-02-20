@@ -30,7 +30,7 @@ export default function InviteModal({ open, onClose, onInvite }: InviteModalProp
 
     const result = inviteSchema.safeParse({ email, role });
     if (!result.success) {
-      setError(result.error.errors[0].message);
+      setError(result.error.errors[0]?.message ?? "Invalid input");
       return;
     }
 
