@@ -5,6 +5,9 @@ import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 import type { UserProfile, Organization } from '@/types/database';
 
+// Module-level singleton — only created once (M3 fix)
+const supabase = createClient();
+
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
@@ -29,8 +32,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const supabase = createClient();
-
   const fetchProfile = useCallback(async (userId: string) => {
     const { data: prof } = await supabase
       .from('user_profiles')
@@ -50,7 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } else {
       setOrganization(null);
     }
-  }, [supabase]);
+  }, []);
 
   useEffect(() => {
     const init = async () => {
@@ -69,7 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase, fetchProfile]);
+  }, [fetchProfile]);
 
   const signOut = async () => {
     await supabase.auth.signOut();
