@@ -38,29 +38,29 @@ export default function Rulers() {
   return (
     <>
       {/* Horizontal ruler */}
-      <div className="absolute top-0 bg-gray-50 border-b border-gray-200 overflow-hidden" style={{ left: RULER_SIZE, height: RULER_SIZE, width: stageWidth }}>
+      <div className="absolute top-0 bg-[#0d1321]/80 backdrop-blur-sm border-b border-white/[0.06] overflow-hidden" style={{ left: RULER_SIZE, height: RULER_SIZE, width: stageWidth }}>
         <svg width={stageWidth} height={RULER_SIZE}>
           {hTicks.map((t, i) => (
             <g key={i}>
-              <line x1={t.pos} y1={RULER_SIZE - 8} x2={t.pos} y2={RULER_SIZE} stroke="#999" strokeWidth={0.5} />
-              <text x={t.pos + 2} y={RULER_SIZE - 10} fontSize={9} fill="#666">{t.label}</text>
+              <line x1={t.pos} y1={RULER_SIZE - 8} x2={t.pos} y2={RULER_SIZE} stroke="rgba(255,255,255,0.15)" strokeWidth={0.5} />
+              <text x={t.pos + 2} y={RULER_SIZE - 10} fontSize={9} fill="rgba(255,255,255,0.3)" fontFamily="ui-monospace, monospace">{t.label}</text>
             </g>
           ))}
         </svg>
       </div>
       {/* Vertical ruler */}
-      <div className="absolute left-0 bg-gray-50 border-r border-gray-200 overflow-hidden" style={{ top: RULER_SIZE, width: RULER_SIZE, height: stageHeight }}>
+      <div className="absolute left-0 bg-[#0d1321]/80 backdrop-blur-sm border-r border-white/[0.06] overflow-hidden" style={{ top: RULER_SIZE, width: RULER_SIZE, height: stageHeight }}>
         <svg width={RULER_SIZE} height={stageHeight}>
           {vTicks.map((t, i) => (
             <g key={i}>
-              <line x1={RULER_SIZE - 8} y1={t.pos} x2={RULER_SIZE} y2={t.pos} stroke="#999" strokeWidth={0.5} />
-              <text x={2} y={t.pos - 2} fontSize={9} fill="#666" transform={`rotate(-90, 2, ${t.pos - 2})`}>{t.label}</text>
+              <line x1={RULER_SIZE - 8} y1={t.pos} x2={RULER_SIZE} y2={t.pos} stroke="rgba(255,255,255,0.15)" strokeWidth={0.5} />
+              <text x={2} y={t.pos - 2} fontSize={9} fill="rgba(255,255,255,0.3)" fontFamily="ui-monospace, monospace" transform={`rotate(-90, 2, ${t.pos - 2})`}>{t.label}</text>
             </g>
           ))}
         </svg>
       </div>
       {/* Corner */}
-      <div className="absolute top-0 left-0 bg-gray-100 border-b border-r border-gray-200 flex items-center justify-center text-xs text-gray-400" style={{ width: RULER_SIZE, height: RULER_SIZE }}>
+      <div className="absolute top-0 left-0 bg-[#0a0f1a] border-b border-r border-white/[0.06] flex items-center justify-center text-[10px] text-white/20 font-mono" style={{ width: RULER_SIZE, height: RULER_SIZE }}>
         {unit}
       </div>
     </>
