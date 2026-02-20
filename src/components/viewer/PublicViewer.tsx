@@ -129,7 +129,7 @@ export default function PublicViewer({
 
   const handleTouchEnd = useCallback(() => { isPanning.current = false; lastDist.current = 0; }, []);
 
-  const renderObject = (obj) => {
+  const renderObject = (obj: PublicObject) => {
     const booth = boothMap.get(obj.id);
     const props = (obj.properties ?? {});
     const style = (props.style ?? props);
