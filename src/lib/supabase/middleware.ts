@@ -61,6 +61,8 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Logged in -> check if they have an org (skip for onboarding itself)
+    // TODO: This DB query runs on every middleware invocation for authenticated users.
+    // Could be optimized by storing org_id in JWT custom claims to avoid the round-trip.
   if (user && !isAuthPage && !isPublicPage && !isOnboarding) {
     const { data: profile } = await supabase
       .from('user_profiles')
