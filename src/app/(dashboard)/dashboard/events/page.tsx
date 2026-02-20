@@ -10,12 +10,16 @@ import EventCard from '@/components/dashboard/EventCard';
 type StatusFilter = 'all' | 'draft' | 'published' | 'live' | 'archived';
 
 export default function EventsPage() {
-  const { organization, loading: authLoading } = useAuth();
+  const { organization, profile, loading: authLoading } = useAuth();
   const [events, setEvents] = useState<EventWithCounts[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+
+  // M2: Role-based access
+  const userRole = profile?.role ?? 'viewer';
+  const canCreate = userRole === 'owner' || userRole === 'admin' || userRole === 'editor';
 
   useEffect(() => {
     if (authLoading || !organization) return;
@@ -69,15 +73,18 @@ export default function EventsPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-white">Events</h1>
-        <Link
-          href="/dashboard/events/new"
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Create Event
-        </Link>
+        {/* M2: Only editors+ can create */}
+        {canCreate && (
+          <Link
+            href="/dashboard/events/new"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Create Event
+          </Link>
+        )}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
@@ -125,7 +132,7 @@ export default function EventsPage() {
               ? 'Create your first event to get started'
               : 'Try adjusting your search or filters'}
           </p>
-          {events.length === 0 && (
+          {events.length === 0 && canCreate && (
             <Link
               href="/dashboard/events/new"
               className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
