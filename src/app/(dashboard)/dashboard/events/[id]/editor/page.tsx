@@ -3,38 +3,43 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
+import { AnimatePresence, motion } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
 import { useEditorStore } from '@/store/editor-store';
-import Toolbar from '@/components/toolbar/Toolbar';
+import FloatingToolbar from '@/components/toolbar/FloatingToolbar';
+import SideRail from '@/components/editor/SideRail';
+import StatusBar from '@/components/editor/StatusBar';
 import LayerPanel from '@/components/panels/LayerPanel';
 import PropertiesPanel from '@/components/panels/PropertiesPanel';
 import ObjectLibrary from '@/components/panels/ObjectLibrary';
 import FloorPanel from '@/components/panels/FloorPanel';
-import FloorOverview from '@/components/panels/FloorOverview';
-import WayfindingPanel from '@/components/panels/WayfindingPanel';
-import AnchorPanel from '@/components/panels/AnchorPanel';
-import CrossFloorLinkPanel from '@/components/panels/CrossFloorLinkPanel';
 import BoothPanel from '@/components/panels/BoothPanel';
 import useKeyboardShortcuts from '@/hooks/useKeyboardShortcuts';
 import useAutoSave from '@/hooks/useAutoSave';
 
 const Canvas = dynamic(() => import('@/components/editor/Canvas'), { ssr: false });
 
-type PanelType = 'layers' | 'library' | 'floors' | 'booths';
+export type PanelId = 'layers' | 'library' | 'floors' | 'booths' | 'properties' | null;
 
 export default function EventEditorPage() {
   const params = useParams();
   const router = useRouter();
   const eventId = params.id as string;
   const [loading, setLoading] = useState(true);
-  const [event, setEvent] = useState<Record<string, unknown> | null>(null);
+  const [_event, setEvent] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [activePanel, setActivePanel] = useState<PanelType>('layers');
+  const [leftPanel, setLeftPanel] = useState<PanelId>('layers');
+  const [rightPanel, setRightPanel] = useState<PanelId>('properties');
 
-  const { loadFloors, loadBooths, floorPlanId, floors, addFloor } = useEditorStore();
+  const { loadFloors, loadBooths, floors, addFloor, selectedObjectIds } = useEditorStore();
 
   useKeyboardShortcuts();
   useAutoSave();
+
+  // Auto-show properties when something is selected
+  useEffect(() => {
+    if (selectedObjectIds.size > 0) setRightPanel('properties');
+  }, [selectedObjectIds]);
 
   useEffect(() => {
     async function loadEvent() {
@@ -75,46 +80,61 @@ export default function EventEditorPage() {
     loadEvent();
   }, [eventId, router, loadFloors, loadBooths]);
 
+  const toggleLeftPanel = (id: PanelId) => {
+    setLeftPanel(prev => prev === id ? null : id);
+  };
+
+  // Loading state
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-950 text-white">
+      <div className="flex items-center justify-center h-screen bg-[#0a0e1a]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4" />
-          <p>Loading editor...</p>
+          <div className="relative w-12 h-12 mx-auto mb-4">
+            <div className="absolute inset-0 rounded-full border-2 border-blue-500/20" />
+            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-blue-500 animate-spin" />
+          </div>
+          <p className="text-sm text-white/50 font-medium">Loading editor…</p>
         </div>
       </div>
     );
   }
 
+  // Error state
   if (error) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-950 text-white">
-        <div className="text-center">
-          <p className="text-red-400 mb-4">{error}</p>
+      <div className="flex items-center justify-center h-screen bg-[#0a0e1a]">
+        <div className="text-center max-w-sm">
+          <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-4">
+            <span className="text-red-400 text-xl">!</span>
+          </div>
+          <p className="text-red-400 mb-2 font-medium">{error}</p>
           <button
             onClick={() => router.push('/dashboard/events/' + eventId)}
-            className="text-blue-400 hover:underline"
+            className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
           >
-             Back to event
+            ← Back to event
           </button>
         </div>
       </div>
     );
   }
 
+  // Empty state
   if (!loading && !error && floors.length === 0) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-950 text-white">
-        <div className="text-center">
-          <div className="text-6xl mb-4">🏗️</div>
-          <h2 className="text-xl font-semibold mb-2">No floors yet</h2>
-          <p className="text-gray-400 mb-6">Create your first floor to start designing</p>
+      <div className="flex items-center justify-center h-screen bg-[#0a0e1a]">
+        <div className="text-center max-w-sm">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center mx-auto mb-6">
+            <span className="text-3xl">🏗️</span>
+          </div>
+          <h2 className="text-lg font-semibold text-white mb-2">No floors yet</h2>
+          <p className="text-sm text-white/40 mb-6">Create your first floor to start designing your floor plan</p>
           <button
             onClick={async () => {
               const floor = await addFloor({ name: 'Floor 1', floor_number: 1 });
               if (floor) await useEditorStore.getState().switchFloor(floor.id);
             }}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg font-medium transition-colors"
+            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 rounded-xl font-medium text-sm transition-all duration-200 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30"
           >
             Create your first floor
           </button>
@@ -124,50 +144,60 @@ export default function EventEditorPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-950 text-white overflow-hidden">
-      <Toolbar />
+    <div className="h-screen flex flex-col bg-[#0a0e1a] text-white overflow-hidden select-none">
+      {/* Main content area */}
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Left: Icon rail + expanding panel */}
+        <SideRail activePanel={leftPanel} onPanelChange={toggleLeftPanel} />
+        
+        <AnimatePresence mode="wait">
+          {leftPanel && (
+            <motion.div
+              key={leftPanel}
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: 280, opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+              className="border-r border-white/[0.06] bg-[#0c1120]/95 backdrop-blur-xl overflow-hidden flex-shrink-0"
+            >
+              <div className="w-[280px] h-full overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                {leftPanel === 'layers' && <LayerPanel />}
+                {leftPanel === 'library' && <ObjectLibrary />}
+                {leftPanel === 'floors' && <FloorPanel />}
+                {leftPanel === 'booths' && <BoothPanel />}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-      <div className="flex flex-1 overflow-hidden">
-        <div className="w-72 border-r border-gray-800 overflow-y-auto">
-          <div className="flex border-b border-gray-800">
-            <button
-              className={'flex-1 px-2 py-2 text-xs ' + (activePanel === 'layers' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white')}
-              onClick={() => setActivePanel('layers')}
-            >
-              Layers
-            </button>
-            <button
-              className={'flex-1 px-2 py-2 text-xs ' + (activePanel === 'library' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white')}
-              onClick={() => setActivePanel('library')}
-            >
-              Library
-            </button>
-            <button
-              className={'flex-1 px-2 py-2 text-xs ' + (activePanel === 'floors' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white')}
-              onClick={() => setActivePanel('floors')}
-            >
-              Floors
-            </button>
-            <button
-              className={'flex-1 px-2 py-2 text-xs ' + (activePanel === 'booths' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white')}
-              onClick={() => setActivePanel('booths')}
-            >
-              Booths
-            </button>
-          </div>
-          {activePanel === 'layers' && <LayerPanel />}
-          {activePanel === 'library' && <ObjectLibrary />}
-          {activePanel === 'floors' && <FloorPanel />}
-          {activePanel === 'booths' && <BoothPanel />}
-        </div>
-
-        <div className="flex-1 relative">
+        {/* Canvas area */}
+        <div className="flex-1 relative overflow-hidden">
+          {/* Canvas */}
           <Canvas />
+
+          {/* Floating toolbar */}
+          <FloatingToolbar />
+
+          {/* Status bar */}
+          <StatusBar />
         </div>
 
-        <div className="w-80 border-l border-gray-800 overflow-y-auto">
-          <PropertiesPanel />
-        </div>
+        {/* Right: Properties panel */}
+        <AnimatePresence>
+          {rightPanel === 'properties' && (
+            <motion.div
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: 320, opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+              className="border-l border-white/[0.06] bg-[#0c1120]/95 backdrop-blur-xl overflow-hidden flex-shrink-0"
+            >
+              <div className="w-[320px] h-full overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                <PropertiesPanel />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

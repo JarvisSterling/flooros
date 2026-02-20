@@ -64,12 +64,20 @@ export default function EditorCanvas() {
     return () => { window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp); };
   }, []);
 
-  // Resize
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Resize — use ResizeObserver on parent container
   useEffect(() => {
-    const onResize = () => setStageSize(window.innerWidth - 560, window.innerHeight - 48);
-    onResize();
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
+    const el = containerRef.current?.parentElement;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const { width, height } = entry.contentRect;
+      setStageSize(width, height - 32); // 32px for status bar
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
   }, [setStageSize]);
 
   // Attach transformer to selected nodes
@@ -384,7 +392,7 @@ export default function EditorCanvas() {
   const cursorStyle = isSpacePanning ? 'grab' : activeTool === 'select' ? 'default' : 'crosshair';
 
   return (
-    <div onDrop={handleDrop} onDragOver={handleDragOver} style={{ width: '100%', height: '100%' }}>
+    <div ref={containerRef} onDrop={handleDrop} onDragOver={handleDragOver} style={{ width: '100%', height: '100%' }}>
     <Stage
       ref={stageRef}
       width={stageWidth}
@@ -398,7 +406,7 @@ export default function EditorCanvas() {
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onDblClick={handleDblClick}
-      style={{ background: '#f5f5f5', cursor: cursorStyle }}
+      style={{ background: '#0f1729', cursor: cursorStyle }}
     >
       <Layer>
         <GridLayer />
