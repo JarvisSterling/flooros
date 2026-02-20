@@ -220,3 +220,17 @@ export interface BoothWithProfile extends Booth {
 export interface MarketplaceBooth extends BoothWithProfile {
   floor_plan_object?: FloorPlanObject;
 }
+
+// Supabase Database type for client generics
+export type Database = {
+  public: {
+    Tables: Record<string, {
+      Row: Record<string, any>;
+      Insert: Record<string, any>;
+      Update: Record<string, any>;
+    }>;
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+  };
+};
