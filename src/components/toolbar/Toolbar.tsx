@@ -1,12 +1,8 @@
 'use client';
 import React, { useRef } from 'react';
 import { useEditorStore, GRID_SIZES, type ToolType } from '@/store/editor-store';
-import { Button } from '@/components/ui/button';
-import { Toggle } from '@/components/ui/toggle';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
-import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
-import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -14,16 +10,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  MousePointer2, Square, Circle, Pentagon, Minus, Type, Ruler,
+  Undo2, Redo2, Trash2, ZoomIn, ZoomOut, Home, Grid3X3, Magnet,
+  Image, Save, Loader2, AlertCircle, Edit3,
+} from 'lucide-react';
 
-const tools: { id: ToolType; label: string; icon: string; shortcut?: string }[] = [
-  { id: 'select', label: 'Select Tool', icon: '↖', shortcut: 'V' },
-  { id: 'rect', label: 'Draw Rectangle', icon: '▭', shortcut: 'R' },
-  { id: 'circle', label: 'Draw Circle', icon: '○', shortcut: 'C' },
-  { id: 'polygon', label: 'Draw Polygon', icon: '⬠', shortcut: 'P' },
-  { id: 'line', label: 'Draw Line/Wall', icon: '╱', shortcut: 'L' },
-  { id: 'text', label: 'Add Text', icon: 'T', shortcut: 'T' },
-  { id: 'dimension', label: 'Dimension Line', icon: '↔', shortcut: 'D' },
+const tools: { id: ToolType; label: string; icon: React.ReactNode; shortcut?: string; group: string }[] = [
+  { id: 'select', label: 'Select', icon: <MousePointer2 size={18} />, shortcut: 'V', group: 'selection' },
+  { id: 'rect', label: 'Rectangle', icon: <Square size={18} />, shortcut: 'R', group: 'shapes' },
+  { id: 'circle', label: 'Circle', icon: <Circle size={18} />, shortcut: 'C', group: 'shapes' },
+  { id: 'polygon', label: 'Polygon', icon: <Pentagon size={18} />, shortcut: 'P', group: 'shapes' },
+  { id: 'line', label: 'Line / Wall', icon: <Minus size={18} />, shortcut: 'L', group: 'shapes' },
+  { id: 'text', label: 'Text', icon: <Type size={18} />, shortcut: 'T', group: 'shapes' },
+  { id: 'dimension', label: 'Dimension', icon: <Ruler size={18} />, shortcut: 'D', group: 'shapes' },
 ];
+
+const groups = ['selection', 'shapes'];
 
 export default function Toolbar() {
   const {
@@ -37,142 +40,145 @@ export default function Toolbar() {
   } = useEditorStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  return (
-    <div className="h-12 bg-card border-b border-border flex items-center px-3 gap-1.5 shrink-0">
-      {/* Tools */}
-      <div className="flex items-center gap-0.5">
-        {tools.map((t) => (
-          <Tooltip key={t.id}>
-            <TooltipTrigger asChild>
-              <Toggle
-                size="sm"
-                pressed={activeTool === t.id}
-                onPressedChange={() => setActiveTool(t.id)}
-                className="w-8 h-8 text-sm font-medium data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-              >
-                {t.icon}
-              </Toggle>
-            </TooltipTrigger>
-            <TooltipContent>{t.label}{t.shortcut ? ` (${t.shortcut})` : ''}</TooltipContent>
-          </Tooltip>
-        ))}
-      </div>
+  const ToolButton = ({ tool }: { tool: typeof tools[0] }) => {
+    const isActive = activeTool === tool.id;
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={() => setActiveTool(tool.id)}
+            className={`flex items-center justify-center w-9 h-9 rounded-lg transition-all duration-150 ${
+              isActive
+                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50 shadow-[0_0_8px_rgba(59,130,246,0.15)]'
+                : 'text-white/60 hover:text-white hover:bg-white/10 border border-transparent'
+            }`}
+          >
+            {tool.icon}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="bg-[#1e293b] border-white/10 text-white text-xs">
+          {tool.label}{tool.shortcut ? <span className="ml-2 text-white/40 font-mono text-[10px]">{tool.shortcut}</span> : ''}
+        </TooltipContent>
+      </Tooltip>
+    );
+  };
 
-      <Separator orientation="vertical" className="h-6" />
+  const IconBtn = ({ icon, label, onClick, disabled, variant }: { icon: React.ReactNode; label: string; onClick: () => void; disabled?: boolean; variant?: 'danger' }) => (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          onClick={onClick}
+          disabled={disabled}
+          className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-150 border border-transparent disabled:opacity-30 disabled:cursor-not-allowed ${
+            variant === 'danger'
+              ? 'text-red-400 hover:bg-red-500/10 hover:border-red-500/30'
+              : 'text-white/60 hover:text-white hover:bg-white/10'
+          }`}
+        >
+          {icon}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" className="bg-[#1e293b] border-white/10 text-white text-xs">{label}</TooltipContent>
+    </Tooltip>
+  );
+
+  const Divider = () => <div className="w-px h-6 bg-white/10 mx-1" />;
+
+  return (
+    <div className="h-12 bg-[#0d1321]/90 backdrop-blur-xl border-b border-white/10 flex items-center px-3 gap-1 shrink-0">
+      {/* Tool groups */}
+      {groups.map((group, gi) => (
+        <React.Fragment key={group}>
+          {gi > 0 && <Divider />}
+          <div className="flex items-center gap-0.5">
+            {tools.filter(t => t.group === group).map(t => <ToolButton key={t.id} tool={t} />)}
+          </div>
+        </React.Fragment>
+      ))}
+
+      <Divider />
 
       {/* Undo/Redo */}
       <div className="flex items-center gap-0.5">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={undo} disabled={undoStack.length === 0}>
-              <span className="text-sm">↩</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Undo (Ctrl+Z)</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={redo} disabled={redoStack.length === 0}>
-              <span className="text-sm">↪</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Redo (Ctrl+Y)</TooltipContent>
-        </Tooltip>
+        <IconBtn icon={<Undo2 size={16} />} label="Undo (Ctrl+Z)" onClick={undo} disabled={undoStack.length === 0} />
+        <IconBtn icon={<Redo2 size={16} />} label="Redo (Ctrl+Y)" onClick={redo} disabled={redoStack.length === 0} />
       </div>
 
-      <Separator orientation="vertical" className="h-6" />
+      <Divider />
 
       {/* Delete */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-destructive hover:bg-destructive/10"
-            onClick={() => { if (selectedObjectIds.size > 0) removeObjects(Array.from(selectedObjectIds)); }}
-            disabled={selectedObjectIds.size === 0}
-          >
-            <span className="text-sm">🗑</span>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Delete Selected (Del)</TooltipContent>
-      </Tooltip>
+      <IconBtn
+        icon={<Trash2 size={16} />}
+        label="Delete (Del)"
+        onClick={() => { if (selectedObjectIds.size > 0) removeObjects(Array.from(selectedObjectIds)); }}
+        disabled={selectedObjectIds.size === 0}
+        variant="danger"
+      />
 
-      <Separator orientation="vertical" className="h-6" />
+      <Divider />
 
       {/* Zoom */}
-      <div className="flex items-center gap-1">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setZoom(zoom / 1.2)}>
-              <span className="text-xs">−</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Zoom Out</TooltipContent>
-        </Tooltip>
-        <span className="text-xs text-muted-foreground w-12 text-center font-mono">{Math.round(zoom * 100)}%</span>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setZoom(zoom * 1.2)}>
-              <span className="text-xs">+</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Zoom In</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 px-1.5" onClick={() => { setZoom(1); setPan(0, 0); }}>
-              <span className="text-xs">⌂</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Reset View</TooltipContent>
-        </Tooltip>
+      <div className="flex items-center gap-0.5">
+        <IconBtn icon={<ZoomOut size={16} />} label="Zoom Out" onClick={() => setZoom(zoom / 1.2)} />
+        <span className="text-[11px] text-white/50 w-11 text-center font-mono tabular-nums">{Math.round(zoom * 100)}%</span>
+        <IconBtn icon={<ZoomIn size={16} />} label="Zoom In" onClick={() => setZoom(zoom * 1.2)} />
+        <IconBtn icon={<Home size={16} />} label="Reset View" onClick={() => { setZoom(1); setPan(0, 0); }} />
       </div>
 
-      <Separator orientation="vertical" className="h-6" />
+      <Divider />
 
-      {/* Grid Controls */}
-      <div className="flex items-center gap-1">
+      {/* Grid/Snap */}
+      <div className="flex items-center gap-0.5">
         <Tooltip>
           <TooltipTrigger asChild>
-            <Toggle size="sm" pressed={gridVisible} onPressedChange={toggleGrid} className="h-7 px-2 text-xs">
-              Grid
-            </Toggle>
+            <button
+              onClick={() => toggleGrid()}
+              className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-150 ${
+                gridVisible ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50' : 'text-white/40 hover:text-white/60 hover:bg-white/10 border border-transparent'
+              }`}
+            >
+              <Grid3X3 size={16} />
+            </button>
           </TooltipTrigger>
-          <TooltipContent>Toggle Grid Visibility</TooltipContent>
+          <TooltipContent side="bottom" className="bg-[#1e293b] border-white/10 text-white text-xs">Toggle Grid</TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Toggle size="sm" pressed={snapEnabled} onPressedChange={toggleSnap} className="h-7 px-2 text-xs">
-              Snap
-            </Toggle>
+            <button
+              onClick={() => toggleSnap()}
+              className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-150 ${
+                snapEnabled ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50' : 'text-white/40 hover:text-white/60 hover:bg-white/10 border border-transparent'
+              }`}
+            >
+              <Magnet size={16} />
+            </button>
           </TooltipTrigger>
-          <TooltipContent>Toggle Snap to Grid</TooltipContent>
+          <TooltipContent side="bottom" className="bg-[#1e293b] border-white/10 text-white text-xs">Toggle Snap</TooltipContent>
         </Tooltip>
         <Select value={String(gridSize)} onValueChange={(v) => setGridSize(Number(v))}>
-          <SelectTrigger className="h-7 w-16 text-xs">
+          <SelectTrigger className="h-7 w-14 text-[11px] bg-white/5 border-white/10 text-white/70 focus:ring-blue-500/50">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
-            {GRID_SIZES.map((s) => <SelectItem key={s} value={String(s)}>{s}m</SelectItem>)}
+          <SelectContent className="bg-[#1e293b] border-white/10">
+            {GRID_SIZES.map((s) => <SelectItem key={s} value={String(s)} className="text-white/80 text-xs focus:bg-white/10 focus:text-white">{s}m</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
 
       {/* Unit */}
       <Select value={unit} onValueChange={(v) => setUnit(v as 'm' | 'ft')}>
-        <SelectTrigger className="h-7 w-20 text-xs">
+        <SelectTrigger className="h-7 w-[70px] text-[11px] bg-white/5 border-white/10 text-white/70 focus:ring-blue-500/50">
           <SelectValue />
         </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="m">Meters</SelectItem>
-          <SelectItem value="ft">Feet</SelectItem>
+        <SelectContent className="bg-[#1e293b] border-white/10">
+          <SelectItem value="m" className="text-white/80 text-xs focus:bg-white/10 focus:text-white">Meters</SelectItem>
+          <SelectItem value="ft" className="text-white/80 text-xs focus:bg-white/10 focus:text-white">Feet</SelectItem>
         </SelectContent>
       </Select>
 
-      <Separator orientation="vertical" className="h-6" />
+      <Divider />
 
-      {/* Background Image Upload */}
+      {/* Background */}
       <div className="flex items-center gap-1.5">
         <input
           ref={fileInputRef}
@@ -188,52 +194,35 @@ export default function Toolbar() {
             e.target.value = '';
           }}
         />
+        <IconBtn icon={<Image size={16} />} label="Upload Background" onClick={() => fileInputRef.current?.click()} />
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => fileInputRef.current?.click()}>
-              🖼 BG
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Upload Background Blueprint</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="w-20">
+            <div className="w-16">
               <Slider
                 value={[backgroundOpacity]}
                 onValueChange={([v]) => setBackgroundOpacity(v)}
-                min={0}
-                max={1}
-                step={0.05}
+                min={0} max={1} step={0.05}
                 className="w-full"
               />
             </div>
           </TooltipTrigger>
-          <TooltipContent>Background Opacity: {Math.round(backgroundOpacity * 100)}%</TooltipContent>
+          <TooltipContent side="bottom" className="bg-[#1e293b] border-white/10 text-white text-xs">Opacity: {Math.round(backgroundOpacity * 100)}%</TooltipContent>
         </Tooltip>
       </div>
 
       {/* Save Status */}
-      <div className="ml-auto">
-        <Badge
-          variant={
-            saveStatus === 'saved' ? 'default' :
-            saveStatus === 'saving' ? 'secondary' :
-            saveStatus === 'error' ? 'destructive' :
-            'outline'
-          }
-          className={`text-xs ${
-            saveStatus === 'saved' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
-            saveStatus === 'saving' ? 'bg-blue-50 text-blue-600 border-blue-200' :
-            saveStatus === 'error' ? 'bg-red-50 text-red-600 border-red-200' :
-            'bg-amber-50 text-amber-600 border-amber-200'
-          }`}
-        >
-          {saveStatus === 'saved' ? '✓ Saved' :
-           saveStatus === 'saving' ? '⟳ Saving...' :
-           saveStatus === 'error' ? '✕ Error' :
-           '● Unsaved'}
-        </Badge>
+      <div className="ml-auto flex items-center gap-1.5">
+        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all duration-150 ${
+          saveStatus === 'saved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+          saveStatus === 'saving' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+          saveStatus === 'error' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+          'bg-amber-500/10 text-amber-400 border-amber-500/20'
+        }`}>
+          {saveStatus === 'saved' && <><Save size={12} /> Saved</>}
+          {saveStatus === 'saving' && <><Loader2 size={12} className="animate-spin" /> Saving...</>}
+          {saveStatus === 'error' && <><AlertCircle size={12} /> Error</>}
+          {saveStatus === 'unsaved' && <><Edit3 size={12} /> Unsaved</>}
+        </div>
       </div>
     </div>
   );
