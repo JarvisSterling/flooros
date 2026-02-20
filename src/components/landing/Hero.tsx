@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import './animations.css';
 
 export default function Hero() {
   return (
