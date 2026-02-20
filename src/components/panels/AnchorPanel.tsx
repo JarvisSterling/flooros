@@ -1,21 +1,22 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
 import type { PositioningAnchor, AnchorType } from '@/types/database';
-import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Radio, Wifi, Smartphone, Tag, RefreshCw, Trash2, AlertTriangle, Battery,
+} from 'lucide-react';
 
 interface AnchorPanelProps {
   floorPlanId: string;
 }
 
-const ANCHOR_TYPES: { value: AnchorType; label: string; icon: string; desc: string }[] = [
-  { value: 'ble', label: 'BLE Beacon', icon: '📡', desc: 'Bluetooth Low Energy beacon' },
-  { value: 'uwb', label: 'UWB', icon: '📶', desc: 'Ultra-Wideband positioning' },
-  { value: 'wifi', label: 'Wi-Fi AP', icon: '📶', desc: 'Wi-Fi access point' },
-  { value: 'qr', label: 'QR Code', icon: '📱', desc: 'QR code marker' },
-  { value: 'nfc', label: 'NFC Tag', icon: '🏷️', desc: 'Near Field Communication tag' },
+const ANCHOR_TYPES: { value: AnchorType; label: string; icon: React.ReactNode; desc: string }[] = [
+  { value: 'ble', label: 'BLE Beacon', icon: <Radio size={14} />, desc: 'Bluetooth Low Energy beacon' },
+  { value: 'uwb', label: 'UWB', icon: <Radio size={14} />, desc: 'Ultra-Wideband positioning' },
+  { value: 'wifi', label: 'Wi-Fi AP', icon: <Wifi size={14} />, desc: 'Wi-Fi access point' },
+  { value: 'qr', label: 'QR Code', icon: <Smartphone size={14} />, desc: 'QR code marker' },
+  { value: 'nfc', label: 'NFC Tag', icon: <Tag size={14} />, desc: 'Near Field Communication tag' },
 ];
 
 export default function AnchorPanel({ floorPlanId }: AnchorPanelProps) {
@@ -28,13 +29,8 @@ export default function AnchorPanel({ floorPlanId }: AnchorPanelProps) {
     setLoading(true);
     try {
       const res = await fetch(`/api/positioning/anchors?floor_plan_id=${floorPlanId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setAnchors(data);
-      }
-    } catch {} finally {
-      setLoading(false);
-    }
+      if (res.ok) { const data = await res.json(); setAnchors(data); }
+    } catch {} finally { setLoading(false); }
   }, [floorPlanId]);
 
   useEffect(() => { loadAnchors(); }, [loadAnchors]);
@@ -44,13 +40,8 @@ export default function AnchorPanel({ floorPlanId }: AnchorPanelProps) {
     setAnchors((p) => p.filter((a) => a.id !== id));
     try {
       const res = await fetch(`/api/positioning/anchors/${id}`, { method: 'DELETE' });
-      if (!res.ok) {
-        setAnchors(prev);
-        console.error('Failed to delete anchor:', res.statusText);
-      }
-    } catch {
-      setAnchors(prev);
-    }
+      if (!res.ok) { setAnchors(prev); console.error('Failed to delete anchor:', res.statusText); }
+    } catch { setAnchors(prev); }
   };
 
   const toggleStatus = async (anchor: PositioningAnchor) => {
@@ -59,17 +50,10 @@ export default function AnchorPanel({ floorPlanId }: AnchorPanelProps) {
     setAnchors((p) => p.map((a) => a.id === anchor.id ? { ...a, status: newStatus } : a));
     try {
       const res = await fetch(`/api/positioning/anchors/${anchor.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: newStatus }),
       });
-      if (!res.ok) {
-        setAnchors(prev);
-        console.error('Failed to toggle anchor status:', res.statusText);
-      }
-    } catch {
-      setAnchors(prev);
-    }
+      if (!res.ok) { setAnchors(prev); console.error('Failed to toggle anchor status:', res.statusText); }
+    } catch { setAnchors(prev); }
   };
 
   const activeCount = anchors.filter((a) => a.status === 'active').length;
@@ -77,34 +61,30 @@ export default function AnchorPanel({ floorPlanId }: AnchorPanelProps) {
 
   return (
     <div className="flex flex-col gap-3 p-3 text-sm">
-      <h3 className="font-semibold text-foreground text-base">Positioning Anchors</h3>
+      <h3 className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">Positioning Anchors</h3>
 
-      {/* Stats */}
-      <div className="flex gap-2 text-xs text-muted-foreground">
-        <span>Total: {anchors.length}</span>
-        <span>Active: {activeCount}</span>
+      <div className="flex gap-3 text-[11px] text-white/40">
+        <span>Total: <span className="text-white/60">{anchors.length}</span></span>
+        <span>Active: <span className="text-emerald-400">{activeCount}</span></span>
         {lowBattery.length > 0 && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="text-yellow-600">⚠️ Low battery: {lowBattery.length}</span>
+              <span className="flex items-center gap-1 text-amber-400"><AlertTriangle size={12} /> {lowBattery.length}</span>
             </TooltipTrigger>
-            <TooltipContent>{lowBattery.length} anchor(s) with battery below 20%</TooltipContent>
+            <TooltipContent className="bg-[#1e293b] border-white/10 text-white text-xs">{lowBattery.length} anchor(s) with battery below 20%</TooltipContent>
           </Tooltip>
         )}
       </div>
 
-      {/* Refresh */}
-      <Button
-        variant="secondary"
-        size="sm"
-        className="w-full text-xs"
+      <button
+        className="w-full flex items-center justify-center gap-1.5 h-7 rounded-lg bg-white/5 border border-white/10 text-white/60 text-xs hover:bg-white/10 transition-all duration-150 disabled:opacity-40"
         onClick={loadAnchors}
         disabled={loading}
       >
-        {loading ? '⏳ Loading...' : '🔄 Refresh'}
-      </Button>
+        <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
+        {loading ? 'Loading...' : 'Refresh'}
+      </button>
 
-      {/* Anchor list */}
       <ScrollArea className="max-h-64">
         <div className="space-y-1">
           {anchors.map((anchor) => {
@@ -115,62 +95,49 @@ export default function AnchorPanel({ floorPlanId }: AnchorPanelProps) {
               <div
                 key={anchor.id}
                 onClick={() => setSelectedAnchor(isSelected ? null : anchor.id)}
-                className={`p-2 rounded-lg cursor-pointer transition-all duration-150 ${
-                  isSelected ? 'bg-accent border border-border' : 'hover:bg-accent/50 border border-transparent'
+                className={`p-2 rounded-lg cursor-pointer transition-all duration-150 border ${
+                  isSelected ? 'bg-white/[0.06] border-white/15' : 'border-transparent hover:bg-white/[0.03] hover:border-white/[0.06]'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="text-foreground text-xs">
-                        {typeInfo?.icon} {typeInfo?.label || anchor.type}
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">{typeInfo?.desc || anchor.type}</TooltipContent>
-                  </Tooltip>
-                  <Badge variant={anchor.status === 'active' ? 'default' : 'secondary'} className={`text-[10px] h-4 px-1.5 ${anchor.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                  <span className="flex items-center gap-1.5 text-xs text-white/70">
+                    <span className="text-white/30">{typeInfo?.icon}</span> {typeInfo?.label || anchor.type}
+                  </span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                    anchor.status === 'active' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/10 text-red-400'
+                  }`}>
                     {anchor.status === 'active' ? '● Active' : '○ Inactive'}
-                  </Badge>
+                  </span>
                 </div>
 
                 {anchor.hardware_id && (
-                  <div className="text-muted-foreground text-xs mt-0.5 font-mono truncate">
-                    {anchor.hardware_id}
-                  </div>
+                  <div className="text-white/30 text-[10px] mt-0.5 font-mono truncate">{anchor.hardware_id}</div>
                 )}
 
                 {isSelected && (
-                  <div className="mt-2 space-y-1 border-t border-border pt-2">
-                    <div className="text-muted-foreground text-xs">
-                      Position: ({anchor.x.toFixed(1)}, {anchor.y.toFixed(1)})
-                    </div>
+                  <div className="mt-2 space-y-1 border-t border-white/10 pt-2">
+                    <div className="text-white/40 text-xs">Position: <span className="font-mono text-white/60">({anchor.x.toFixed(1)}, {anchor.y.toFixed(1)})</span></div>
                     {anchor.battery_level !== null && (
-                      <div className={`text-xs ${anchor.battery_level < 20 ? 'text-yellow-600' : 'text-muted-foreground'}`}>
-                        🔋 {anchor.battery_level}%
+                      <div className={`text-xs flex items-center gap-1 ${anchor.battery_level < 20 ? 'text-amber-400' : 'text-white/40'}`}>
+                        <Battery size={12} /> {anchor.battery_level}%
                       </div>
                     )}
                     {anchor.last_seen && (
-                      <div className="text-muted-foreground text-xs">
-                        Last seen: {new Date(anchor.last_seen).toLocaleTimeString()}
-                      </div>
+                      <div className="text-white/30 text-xs">Last seen: {new Date(anchor.last_seen).toLocaleTimeString()}</div>
                     )}
                     <div className="flex gap-1 mt-1">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        className="flex-1 text-xs h-7"
+                      <button
+                        className="flex-1 h-7 rounded-lg bg-white/5 border border-white/10 text-white/60 text-xs hover:bg-white/10 transition-all"
                         onClick={(e) => { e.stopPropagation(); toggleStatus(anchor); }}
                       >
                         {anchor.status === 'active' ? 'Deactivate' : 'Activate'}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-xs h-7 text-destructive hover:bg-destructive/10"
+                      </button>
+                      <button
+                        className="h-7 px-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all"
                         onClick={(e) => { e.stopPropagation(); deleteAnchor(anchor.id); }}
                       >
-                        🗑
-                      </Button>
+                        <Trash2 size={12} />
+                      </button>
                     </div>
                   </div>
                 )}
@@ -181,10 +148,8 @@ export default function AnchorPanel({ floorPlanId }: AnchorPanelProps) {
       </ScrollArea>
 
       {anchors.length === 0 && !loading && (
-        <div className="text-muted-foreground text-xs text-center py-4">
-          No anchors placed on this floor.
-          <br />
-          Use the canvas tools to place beacons.
+        <div className="text-white/30 text-xs text-center py-4">
+          No anchors placed on this floor.<br />Use the canvas tools to place beacons.
         </div>
       )}
     </div>
