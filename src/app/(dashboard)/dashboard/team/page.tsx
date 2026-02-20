@@ -54,19 +54,22 @@ export default function TeamPage() {
   };
 
   const handleChangeRole = async (userId: string, role: 'admin' | 'editor' | 'viewer') => {
-    const { error: err } = await updateMemberRole(userId, role);
+    if (!organization?.id) return;
+    const { error: err } = await updateMemberRole(userId, organization.id, role);
     if (err) setError(err);
     else await fetchData();
   };
 
   const handleRemove = async (userId: string) => {
-    const { error: err } = await removeMember(userId);
+    if (!organization?.id) return;
+    const { error: err } = await removeMember(userId, organization.id);
     if (err) setError(err);
     else await fetchData();
   };
 
   const handleCancelInvitation = async (id: string) => {
-    const { error: err } = await cancelInvitation(id);
+    if (!organization?.id) return;
+    const { error: err } = await cancelInvitation(id, organization.id);
     if (err) setError(err);
     else await fetchData();
   };
