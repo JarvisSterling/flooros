@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/components/providers/auth-provider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -9,7 +10,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "FloorOS — Event Floor Plan Platform",
+  title: "FloorOS - Event Floor Plan Platform",
   description:
     "Create interactive floor plans for events, trade shows, and exhibitions. Manage booths, exhibitors, and attendee experiences.",
   keywords: ["floor plan", "event", "trade show", "exhibition", "booth management"],
@@ -22,7 +23,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} dark`}>
-      <body className="min-h-screen antialiased">{children}</body>
+      <body className="min-h-screen antialiased">
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }

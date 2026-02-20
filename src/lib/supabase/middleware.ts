@@ -29,24 +29,50 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const pathname = request.nextUrl.pathname;
+
   const isAuthPage =
-    request.nextUrl.pathname.startsWith("/login") ||
-    request.nextUrl.pathname.startsWith("/signup");
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/signup") ||
+    pathname.startsWith("/forgot-password");
 
   const isPublicPage =
-    request.nextUrl.pathname.startsWith("/view") ||
-    request.nextUrl.pathname === "/";
+    pathname.startsWith("/view") ||
+    pathname === "/";
 
+  const isOnboarding = pathname.startsWith("/onboarding");
+  const isCallback = pathname.startsWith("/auth/callback");
+
+  // Allow callback through always
+  if (isCallback) return supabaseResponse;
+
+  // Not logged in -> redirect to login (unless public/auth page)
   if (!user && !isAuthPage && !isPublicPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
+  // Logged in on auth page -> redirect to dashboard
   if (user && isAuthPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);
+  }
+
+  // Logged in -> check if they have an org (skip for onboarding itself)
+  if (user && !isAuthPage && !isPublicPage && !isOnboarding) {
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('org_id')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile || !profile.org_id) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/onboarding";
+      return NextResponse.redirect(url);
+    }
   }
 
   return supabaseResponse;
