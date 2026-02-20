@@ -36,7 +36,7 @@ export default function OnboardingPage() {
     e.preventDefault();
     setError(null);
     const parsed = orgSchema.safeParse({ name: orgName, slug });
-    if (!parsed.success) { setError(parsed.error.errors[0].message); return; }
+    if (!parsed.success) { setError(parsed.error.errors[0]?.message ?? "Invalid input"); return; }
     setStep(2);
   }
 
@@ -44,7 +44,7 @@ export default function OnboardingPage() {
     e.preventDefault();
     setError(null);
     const parsed = profileSchema.safeParse({ fullName });
-    if (!parsed.success) { setError(parsed.error.errors[0].message); return; }
+    if (!parsed.success) { setError(parsed.error.errors[0]?.message ?? "Invalid input"); return; }
 
     setLoading(true);
     const supabase = createClient();
