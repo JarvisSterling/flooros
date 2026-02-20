@@ -6,6 +6,7 @@ import { useAuth } from '@/components/providers/auth-provider';
 import { createEvent, generateSlug } from '@/lib/api/events';
 import { z } from 'zod';
 
+// M1: TODO — Add server actions for server-side validation. Currently relies on RLS for protection.
 const eventSchema = z.object({
   name: z.string().min(1, 'Event name is required').max(100),
   slug: z.string().min(1, 'Slug is required').max(100).regex(/^[a-z0-9-]+$/, 'Slug must be lowercase with hyphens only'),
@@ -20,7 +21,7 @@ type FormErrors = Partial<Record<keyof FormData, string>>;
 
 export default function CreateEventPage() {
   const router = useRouter();
-  const { organization } = useAuth();
+  const { organization, profile } = useAuth();
   const [form, setForm] = useState<FormData>({
     name: '',
     slug: '',
@@ -33,6 +34,10 @@ export default function CreateEventPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [slugManual, setSlugManual] = useState(false);
+
+  // M2: Role guard — viewers cannot create events
+  const userRole = profile?.role ?? 'viewer';
+  const canCreate = userRole === 'owner' || userRole === 'admin' || userRole === 'editor';
 
   useEffect(() => {
     if (!slugManual) {
@@ -50,6 +55,11 @@ export default function CreateEventPage() {
     e.preventDefault();
     setSubmitError(null);
 
+    if (!canCreate) {
+      setSubmitError('You do not have permission to create events');
+      return;
+    }
+
     const result = eventSchema.safeParse(form);
     if (!result.success) {
       const fieldErrors: FormErrors = {};
@@ -58,6 +68,12 @@ export default function CreateEventPage() {
         fieldErrors[field] = err.message;
       });
       setErrors(fieldErrors);
+      return;
+    }
+
+    // m2: Date validation
+    if (form.start_date && form.end_date && form.end_date < form.start_date) {
+      setErrors({ end_date: 'End date must be on or after start date' });
       return;
     }
 
@@ -88,6 +104,18 @@ export default function CreateEventPage() {
       router.push('/dashboard/events/' + data.id);
     }
   };
+
+  if (!canCreate) {
+    return (
+      <div className="p-6 max-w-2xl mx-auto">
+        <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/10 p-6 text-center">
+          <p className="text-yellow-400 font-medium">You don&apos;t have permission to create events</p>
+          <p className="text-yellow-400/60 text-sm mt-1">Contact an admin to get editor access.</p>
+          <button onClick={() => router.push('/dashboard/events')} className="text-blue-400 text-sm mt-3 hover:underline">Back to Events</button>
+        </div>
+      </div>
+    );
+  }
 
   const inputClass = 'w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent';
   const labelClass = 'block text-sm font-medium text-white/70 mb-1.5';
@@ -164,6 +192,7 @@ export default function CreateEventPage() {
                 onChange={(e) => handleChange('end_date', e.target.value)}
                 className={inputClass}
               />
+              {errors.end_date && <p className={errorClass}>{errors.end_date}</p>}
             </div>
           </div>
 
