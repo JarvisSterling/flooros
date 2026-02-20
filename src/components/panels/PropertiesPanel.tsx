@@ -4,13 +4,8 @@ import { useEditorStore } from '@/store/editor-store';
 import type { FloorPlanObject, LayerType, ObjectType, BoothStatus } from '@/types/database';
 import { BOOTH_STATUS_COLORS, BOOTH_STATUS_LABELS } from '@/lib/booth-helpers';
 import CrossFloorLinkPanel from './CrossFloorLinkPanel';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
-import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
   SelectContent,
@@ -18,14 +13,46 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  ChevronDown, ChevronRight, Lock, Unlock, Link2, X, Plus,
+  Move, Palette, Store, FileText, Layers, Hash, RotateCw,
+  MousePointer2,
+} from 'lucide-react';
 
 const CATEGORIES: ObjectType[] = ['booth', 'wall', 'zone', 'furniture', 'infrastructure', 'annotation'];
 const LAYER_OPTIONS: LayerType[] = ['background', 'structure', 'booths', 'zones', 'furniture', 'annotations', 'default'];
 const BOOTH_STATUSES: BoothStatus[] = ['available', 'reserved', 'sold', 'blocked', 'premium'];
 
-const SectionTitle = ({ children }: { children: React.ReactNode }) => (
-  <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">{children}</h4>
-);
+function Section({ title, icon, children, defaultOpen = true }: { title: string; icon?: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="border-b border-white/5">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center gap-2 px-3 py-2 text-[11px] font-semibold text-white/50 uppercase tracking-wider hover:text-white/70 transition-colors duration-150"
+      >
+        {icon && <span className="text-white/30">{icon}</span>}
+        <span className="flex-1 text-left">{title}</span>
+        {open ? <ChevronDown size={12} className="text-white/30" /> : <ChevronRight size={12} className="text-white/30" />}
+      </button>
+      {open && <div className="px-3 pb-3">{children}</div>}
+    </div>
+  );
+}
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return <label className="text-[10px] text-white/40 uppercase tracking-wider block mb-1">{children}</label>;
+}
+
+function FieldInput({ type = 'text', ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <input
+      type={type}
+      {...props}
+      className={`w-full h-7 px-2 text-xs bg-white/5 border border-white/10 rounded-md text-white placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-150 ${props.className || ''}`}
+    />
+  );
+}
 
 export default function PropertiesPanel() {
   const {
@@ -38,18 +65,23 @@ export default function PropertiesPanel() {
 
   if (selectedObjectIds.size === 0) {
     return (
-      <div className="w-64 bg-card border-l border-border p-4">
-        <h3 className="text-sm font-semibold text-foreground mb-2">Properties</h3>
-        <p className="text-xs text-muted-foreground">Select an object to edit its properties</p>
+      <div className="w-64 bg-[#0a0f1a] border-l border-white/10 flex flex-col items-center justify-center p-8">
+        <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mb-3">
+          <MousePointer2 size={20} className="text-white/20" />
+        </div>
+        <p className="text-xs text-white/40 text-center">Select an object to edit its properties</p>
       </div>
     );
   }
 
   if (selectedObjectIds.size > 1) {
     return (
-      <div className="w-64 bg-card border-l border-border p-4">
-        <h3 className="text-sm font-semibold text-foreground mb-2">Properties</h3>
-        <p className="text-xs text-muted-foreground">{selectedObjectIds.size} objects selected</p>
+      <div className="w-64 bg-[#0a0f1a] border-l border-white/10 flex flex-col items-center justify-center p-8">
+        <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-3">
+          <Layers size={20} className="text-blue-400" />
+        </div>
+        <p className="text-sm font-medium text-white/70">{selectedObjectIds.size} objects</p>
+        <p className="text-xs text-white/40">Multi-selection</p>
       </div>
     );
   }
@@ -86,206 +118,198 @@ export default function PropertiesPanel() {
   };
 
   return (
-    <ScrollArea className="w-64 bg-card border-l border-border">
-      <div className="p-3 text-xs">
-        <h3 className="text-sm font-semibold text-foreground mb-3">Properties</h3>
+    <div className="w-64 bg-[#0a0f1a] border-l border-white/10 flex flex-col overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+      {/* Header */}
+      <div className="px-3 py-2.5 border-b border-white/10 flex items-center justify-between">
+        <h3 className="text-xs font-semibold text-white/70">Properties</h3>
+        <span className="text-[10px] text-white/30 bg-white/5 px-2 py-0.5 rounded-full">{obj.shape || obj.type}</span>
+      </div>
 
-        {/* Convert to Booth */}
-        {!isBooth && (
-          <div className="mb-3">
-            <Button
-              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs"
-              size="sm"
-              onClick={() => convertToBooth(id)}
-            >
-              🏪 Convert to Booth
-            </Button>
-          </div>
-        )}
-
-        {/* Remove Booth */}
-        {isBooth && booth && (
-          <div className="mb-3">
-            <Button
-              variant="outline"
-              className="w-full text-destructive border-destructive/30 hover:bg-destructive/10 text-xs"
-              size="sm"
-              onClick={() => removeBooth(id)}
-            >
-              ✕ Remove Booth
-            </Button>
-          </div>
-        )}
-
-        {/* Label */}
-        <div className="mb-3">
-          <Label className="text-xs text-muted-foreground">Label</Label>
-          <Input type="text" value={obj.label || ''} onChange={(e) => update({ label: e.target.value || null })}
-            className="h-7 text-xs mt-0.5" />
+      {/* Booth convert/remove */}
+      {!isBooth && (
+        <div className="px-3 py-2 border-b border-white/5">
+          <button
+            className="w-full h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-medium hover:bg-emerald-500/25 transition-all duration-150 flex items-center justify-center gap-1.5"
+            onClick={() => convertToBooth(id)}
+          >
+            <Store size={14} /> Convert to Booth
+          </button>
         </div>
+      )}
+      {isBooth && booth && (
+        <div className="px-3 py-2 border-b border-white/5">
+          <button
+            className="w-full h-8 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-medium hover:bg-red-500/20 transition-all duration-150 flex items-center justify-center gap-1.5"
+            onClick={() => removeBooth(id)}
+          >
+            <X size={14} /> Remove Booth
+          </button>
+        </div>
+      )}
 
-        {/* Position */}
-        <div className="mb-3">
-          <Label className="text-xs text-muted-foreground">Position</Label>
-          <div className="flex gap-2 mt-0.5">
+      {/* Label */}
+      <div className="px-3 py-2 border-b border-white/5">
+        <FieldLabel>Label</FieldLabel>
+        <FieldInput value={obj.label || ''} onChange={(e) => update({ label: (e.target as HTMLInputElement).value || null })} placeholder="Object label..." />
+      </div>
+
+      {/* Transform */}
+      <Section title="Transform" icon={<Move size={12} />}>
+        <div className="space-y-2">
+          <div>
+            <FieldLabel>Position</FieldLabel>
+            <div className="grid grid-cols-2 gap-1.5">
+              <div className="relative">
+                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-white/30 font-mono">X</span>
+                <FieldInput type="number" step="0.1" value={obj.x} onChange={(e) => update({ x: Number((e.target as HTMLInputElement).value) })} className="pl-6" />
+              </div>
+              <div className="relative">
+                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-white/30 font-mono">Y</span>
+                <FieldInput type="number" step="0.1" value={obj.y} onChange={(e) => update({ y: Number((e.target as HTMLInputElement).value) })} className="pl-6" />
+              </div>
+            </div>
+          </div>
+
+          {obj.width != null && (
             <div>
-              <span className="text-muted-foreground text-[10px]">X</span>
-              <Input type="number" step="0.1" value={obj.x} onChange={(e) => update({ x: Number(e.target.value) })}
-                className="h-7 text-xs" />
+              <div className="flex items-center justify-between mb-1">
+                <FieldLabel>Size</FieldLabel>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setLockAspect(!lockAspect)}
+                      className={`p-0.5 rounded transition-colors ${lockAspect ? 'text-blue-400' : 'text-white/30 hover:text-white/50'}`}
+                    >
+                      {lockAspect ? <Lock size={12} /> : <Unlock size={12} />}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="bg-[#1e293b] border-white/10 text-white text-xs">{lockAspect ? 'Unlock' : 'Lock'} Aspect Ratio</TooltipContent>
+                </Tooltip>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                <div className="relative">
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-white/30 font-mono">W</span>
+                  <FieldInput type="number" step="0.1" value={obj.width ?? 0} onChange={(e) => setWidth(Number((e.target as HTMLInputElement).value))} className="pl-7" />
+                </div>
+                <div className="relative">
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-white/30 font-mono">H</span>
+                  <FieldInput type="number" step="0.1" value={obj.height ?? 0} onChange={(e) => setHeight(Number((e.target as HTMLInputElement).value))} className="pl-7" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <FieldLabel>Rotation</FieldLabel>
+            <div className="relative">
+              <FieldInput type="number" min="0" max="360" value={obj.rotation} onChange={(e) => update({ rotation: Number((e.target as HTMLInputElement).value) })} className="pr-6" />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/30">°</span>
+            </div>
+          </div>
+        </div>
+      </Section>
+
+      {/* Appearance */}
+      {!isBooth && (
+        <Section title="Appearance" icon={<Palette size={12} />}>
+          <div className="space-y-2">
+            <div>
+              <FieldLabel>Fill</FieldLabel>
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <input type="color" value={style.fill || '#4A90D9'} onChange={(e) => updateStyle('fill', e.target.value)}
+                    className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border border-white/10 p-0.5" />
+                </div>
+                <div className="flex-1">
+                  <Slider value={[style.opacity ?? 1]} onValueChange={([v]) => updateStyle('opacity', v)} min={0} max={1} step={0.05} />
+                </div>
+                <span className="text-[10px] text-white/30 w-8 text-right tabular-nums">{Math.round((style.opacity ?? 1) * 100)}%</span>
+              </div>
             </div>
             <div>
-              <span className="text-muted-foreground text-[10px]">Y</span>
-              <Input type="number" step="0.1" value={obj.y} onChange={(e) => update({ y: Number(e.target.value) })}
-                className="h-7 text-xs" />
+              <FieldLabel>Border</FieldLabel>
+              <div className="flex items-center gap-2 mb-1.5">
+                <input type="color" value={style.stroke || '#333333'} onChange={(e) => updateStyle('stroke', e.target.value)}
+                  className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border border-white/10 p-0.5" />
+                <FieldInput type="number" min="0" max="10" step="0.5" value={style.strokeWidth ?? 1}
+                  onChange={(e) => updateStyle('strokeWidth', Number((e.target as HTMLInputElement).value))} className="w-16" />
+              </div>
+              <Select value={style.strokeStyle || 'solid'} onValueChange={(v) => updateStyle('strokeStyle', v)}>
+                <SelectTrigger className="h-7 text-xs bg-white/5 border-white/10 text-white/70">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1e293b] border-white/10">
+                  <SelectItem value="solid" className="text-white/80 text-xs focus:bg-white/10 focus:text-white">Solid</SelectItem>
+                  <SelectItem value="dashed" className="text-white/80 text-xs focus:bg-white/10 focus:text-white">Dashed</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
-        </div>
+        </Section>
+      )}
 
-        {/* Size */}
-        {obj.width != null && (
-          <div className="mb-3">
-            <div className="flex items-center justify-between mb-0.5">
-              <Label className="text-xs text-muted-foreground">Size</Label>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={`h-5 w-5 text-xs ${lockAspect ? 'text-foreground' : 'text-muted-foreground'}`}
-                    onClick={() => setLockAspect(!lockAspect)}
-                  >
-                    {lockAspect ? '🔒' : '🔓'}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{lockAspect ? 'Unlock Aspect Ratio' : 'Lock Aspect Ratio'}</TooltipContent>
-              </Tooltip>
-            </div>
-            <div className="flex gap-2">
-              <div>
-                <span className="text-muted-foreground text-[10px]">W</span>
-                <Input type="number" step="0.1" value={obj.width ?? 0} onChange={(e) => setWidth(Number(e.target.value))}
-                  className="h-7 text-xs" />
-              </div>
-              <div>
-                <span className="text-muted-foreground text-[10px]">H</span>
-                <Input type="number" step="0.1" value={obj.height ?? 0} onChange={(e) => setHeight(Number(e.target.value))}
-                  className="h-7 text-xs" />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Rotation */}
-        <div className="mb-3">
-          <Label className="text-xs text-muted-foreground">Rotation</Label>
-          <Input type="number" min="0" max="360" value={obj.rotation} onChange={(e) => update({ rotation: Number(e.target.value) })}
-            className="h-7 text-xs mt-0.5" />
-        </div>
-
-        {/* Fill */}
-        {!isBooth && (
-          <div className="mb-3">
-            <Label className="text-xs text-muted-foreground">Fill</Label>
-            <div className="flex gap-2 items-center mt-0.5">
-              <input type="color" value={style.fill || '#4A90D9'} onChange={(e) => updateStyle('fill', e.target.value)}
-                className="w-8 h-8 rounded-md cursor-pointer bg-transparent border border-border" />
-              <div className="flex-1">
-                <Slider
-                  value={[style.opacity ?? 1]}
-                  onValueChange={([v]) => updateStyle('opacity', v)}
-                  min={0} max={1} step={0.05}
-                />
-              </div>
-              <span className="text-muted-foreground w-8 text-[10px]">{Math.round((style.opacity ?? 1) * 100)}%</span>
-            </div>
-          </div>
-        )}
-
-        {/* Border */}
-        {!isBooth && (
-          <div className="mb-3">
-            <Label className="text-xs text-muted-foreground">Border</Label>
-            <div className="flex gap-2 items-center mb-1 mt-0.5">
-              <input type="color" value={style.stroke || '#333333'} onChange={(e) => updateStyle('stroke', e.target.value)}
-                className="w-8 h-8 rounded-md cursor-pointer bg-transparent border border-border" />
-              <Input type="number" min="0" max="10" step="0.5" value={style.strokeWidth ?? 1}
-                onChange={(e) => updateStyle('strokeWidth', Number(e.target.value))}
-                className="h-7 text-xs w-16" />
-            </div>
-            <Select value={style.strokeStyle || 'solid'} onValueChange={(v) => updateStyle('strokeStyle', v)}>
-              <SelectTrigger className="h-7 text-xs">
+      {/* Category & Layer */}
+      <Section title="Classification" icon={<Layers size={12} />} defaultOpen={false}>
+        <div className="space-y-2">
+          <div>
+            <FieldLabel>Category</FieldLabel>
+            <Select value={obj.type} onValueChange={(v) => update({ type: v as ObjectType })}>
+              <SelectTrigger className="h-7 text-xs bg-white/5 border-white/10 text-white/70">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="solid">Solid</SelectItem>
-                <SelectItem value="dashed">Dashed</SelectItem>
+              <SelectContent className="bg-[#1e293b] border-white/10">
+                {CATEGORIES.map((c) => <SelectItem key={c} value={c} className="text-white/80 text-xs focus:bg-white/10 focus:text-white">{c}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
-        )}
-
-        {/* Category */}
-        <div className="mb-3">
-          <Label className="text-xs text-muted-foreground">Category</Label>
-          <Select value={obj.type} onValueChange={(v) => update({ type: v as ObjectType })}>
-            <SelectTrigger className="h-7 text-xs mt-0.5">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <div>
+            <FieldLabel>Layer</FieldLabel>
+            <Select value={obj.layer} onValueChange={(v) => update({ layer: v as LayerType })}>
+              <SelectTrigger className="h-7 text-xs bg-white/5 border-white/10 text-white/70">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1e293b] border-white/10">
+                {LAYER_OPTIONS.map((l) => <SelectItem key={l} value={l} className="text-white/80 text-xs focus:bg-white/10 focus:text-white">{l}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <FieldLabel>Z-Index</FieldLabel>
+            <FieldInput type="number" value={obj.z_index} onChange={(e) => update({ z_index: Number((e.target as HTMLInputElement).value) })} />
+          </div>
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              onClick={() => update({ locked: !obj.locked })}
+              className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs transition-all duration-150 ${
+                obj.locked ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-white/5 text-white/50 border border-white/10 hover:bg-white/10'
+              }`}
+            >
+              {obj.locked ? <Lock size={12} /> : <Unlock size={12} />}
+              {obj.locked ? 'Locked' : 'Unlocked'}
+            </button>
+          </div>
         </div>
+      </Section>
 
-        {/* Layer */}
-        <div className="mb-3">
-          <Label className="text-xs text-muted-foreground">Layer</Label>
-          <Select value={obj.layer} onValueChange={(v) => update({ layer: v as LayerType })}>
-            <SelectTrigger className="h-7 text-xs mt-0.5">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {LAYER_OPTIONS.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Z-Index */}
-        <div className="mb-3">
-          <Label className="text-xs text-muted-foreground">Z-Index</Label>
-          <Input type="number" value={obj.z_index} onChange={(e) => update({ z_index: Number(e.target.value) })}
-            className="h-7 text-xs mt-0.5" />
-        </div>
-
-        {/* Lock */}
-        <div className="mb-3 flex items-center gap-2">
-          <input type="checkbox" checked={obj.locked} onChange={(e) => update({ locked: e.target.checked })}
-            className="accent-primary rounded" />
-          <span className="text-muted-foreground text-xs">Locked</span>
-        </div>
-
-        {/* ── Booth-specific section ── */}
-        {isBooth && (
-          <>
-            <Separator className="my-3" />
-            <SectionTitle>🏪 Booth Info</SectionTitle>
-
-            <div className="mb-2">
-              <Label className="text-xs text-muted-foreground">Booth Number</Label>
-              <Input
-                type="text"
+      {/* Booth Info */}
+      {isBooth && (
+        <Section title="Booth Info" icon={<Store size={12} />}>
+          <div className="space-y-2">
+            <div>
+              <FieldLabel>Booth Number</FieldLabel>
+              <FieldInput
                 value={booth?.booth_number || metadata?.booth_number || ''}
                 onChange={(e) => {
-                  if (booth) updateBoothNumber(id, e.target.value);
-                  else update({ metadata: { ...metadata, booth_number: e.target.value } });
+                  if (booth) updateBoothNumber(id, (e.target as HTMLInputElement).value);
+                  else update({ metadata: { ...metadata, booth_number: (e.target as HTMLInputElement).value } });
                 }}
-                className="h-7 text-xs font-mono mt-0.5"
+                className="font-mono"
               />
             </div>
 
-            <div className="mb-2">
-              <Label className="text-xs text-muted-foreground">Status</Label>
-              <div className="flex flex-wrap gap-1 mt-0.5">
+            <div>
+              <FieldLabel>Status</FieldLabel>
+              <div className="flex flex-wrap gap-1 mt-1">
                 {BOOTH_STATUSES.map((s) => {
                   const current = booth?.status || metadata?.booth_status || 'available';
                   const isActive = current === s;
@@ -297,8 +321,8 @@ export default function PropertiesPanel() {
                             if (booth) updateBoothStatus(id, s);
                             else update({ metadata: { ...metadata, booth_status: s } });
                           }}
-                          className={`px-2 py-0.5 rounded-md text-xs font-medium border transition-all duration-150 ${
-                            isActive ? 'ring-2 ring-offset-1 ring-offset-background ring-ring scale-105' : 'opacity-60 hover:opacity-100'
+                          className={`px-2 py-1 rounded-md text-[10px] font-medium border transition-all duration-150 ${
+                            isActive ? 'ring-1 ring-offset-1 ring-offset-[#0a0f1a] scale-105' : 'opacity-50 hover:opacity-80'
                           }`}
                           style={{
                             backgroundColor: BOOTH_STATUS_COLORS[s],
@@ -309,15 +333,15 @@ export default function PropertiesPanel() {
                           {BOOTH_STATUS_LABELS[s]}
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent>Set status to {BOOTH_STATUS_LABELS[s]}</TooltipContent>
+                      <TooltipContent className="bg-[#1e293b] border-white/10 text-white text-xs">Set status to {BOOTH_STATUS_LABELS[s]}</TooltipContent>
                     </Tooltip>
                   );
                 })}
               </div>
             </div>
 
-            <div className="mb-2">
-              <Label className="text-xs text-muted-foreground">Pricing Tier</Label>
+            <div>
+              <FieldLabel>Pricing Tier</FieldLabel>
               <Select
                 value={booth?.pricing_tier || ''}
                 onValueChange={(tier) => {
@@ -336,119 +360,111 @@ export default function PropertiesPanel() {
                   }
                 }}
               >
-                <SelectTrigger className="h-7 text-xs mt-0.5">
+                <SelectTrigger className="h-7 text-xs bg-white/5 border-white/10 text-white/70">
                   <SelectValue placeholder="— None —" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">— None —</SelectItem>
-                  <SelectItem value="standard">Standard</SelectItem>
-                  <SelectItem value="premium">Premium</SelectItem>
-                  <SelectItem value="enterprise">Enterprise</SelectItem>
+                <SelectContent className="bg-[#1e293b] border-white/10">
+                  <SelectItem value="" className="text-white/80 text-xs focus:bg-white/10">— None —</SelectItem>
+                  <SelectItem value="standard" className="text-white/80 text-xs focus:bg-white/10">Standard</SelectItem>
+                  <SelectItem value="premium" className="text-white/80 text-xs focus:bg-white/10">Premium</SelectItem>
+                  <SelectItem value="enterprise" className="text-white/80 text-xs focus:bg-white/10">Enterprise</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="mb-2">
-              <Label className="text-xs text-muted-foreground">Exhibitor ID</Label>
-              <Input
-                type="text"
+            <div>
+              <FieldLabel>Exhibitor ID</FieldLabel>
+              <FieldInput
                 placeholder="exhibitor UUID..."
                 value={booth?.exhibitor_id || metadata?.exhibitor_id || ''}
                 onChange={(e) => {
-                  if (booth) updateBoothExhibitor(id, e.target.value || null);
-                  else update({ metadata: { ...metadata, exhibitor_id: e.target.value } });
+                  if (booth) updateBoothExhibitor(id, (e.target as HTMLInputElement).value || null);
+                  else update({ metadata: { ...metadata, exhibitor_id: (e.target as HTMLInputElement).value } });
                 }}
-                className="h-7 text-xs font-mono mt-0.5"
+                className="font-mono"
               />
             </div>
-            <div className="mb-2">
-              <Label className="text-xs text-muted-foreground">Exhibitor Name</Label>
-              <Input
-                type="text"
+            <div>
+              <FieldLabel>Exhibitor Name</FieldLabel>
+              <FieldInput
                 placeholder="Company name..."
                 value={metadata?.exhibitor_name || ''}
                 onChange={(e) => {
-                  if (booth) updateBoothExhibitor(id, booth.exhibitor_id, e.target.value);
-                  else update({ metadata: { ...metadata, exhibitor_name: e.target.value } });
+                  if (booth) updateBoothExhibitor(id, booth.exhibitor_id, (e.target as HTMLInputElement).value);
+                  else update({ metadata: { ...metadata, exhibitor_name: (e.target as HTMLInputElement).value } });
                 }}
-                className="h-7 text-xs mt-0.5"
               />
             </div>
-          </>
-        )}
+          </div>
+        </Section>
+      )}
 
-        {/* ── Booth Profile section ── */}
-        {isBooth && booth && (
-          <>
-            <Separator className="my-3" />
-            <SectionTitle>📋 Booth Profile</SectionTitle>
-
-            <div className="mb-2">
-              <Label className="text-xs text-muted-foreground">Logo URL</Label>
-              <Input
+      {/* Booth Profile */}
+      {isBooth && booth && (
+        <Section title="Booth Profile" icon={<FileText size={12} />} defaultOpen={false}>
+          <div className="space-y-2">
+            <div>
+              <FieldLabel>Logo URL</FieldLabel>
+              <FieldInput
                 type="url"
                 placeholder="https://..."
                 value={boothProfile?.logo_url || ''}
-                onChange={(e) => updateBoothProfile(id, { logo_url: e.target.value || null })}
-                className="h-7 text-xs mt-0.5"
+                onChange={(e) => updateBoothProfile(id, { logo_url: (e.target as HTMLInputElement).value || null })}
               />
             </div>
-
-            <div className="mb-2">
-              <Label className="text-xs text-muted-foreground">Description</Label>
+            <div>
+              <FieldLabel>Description</FieldLabel>
               <textarea
                 rows={2}
                 placeholder="Booth description..."
                 value={boothProfile?.description || ''}
                 onChange={(e) => updateBoothProfile(id, { description: e.target.value || null })}
-                className="w-full resize-none rounded-md border border-input bg-background px-3 py-1.5 text-xs shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="w-full resize-none rounded-md bg-white/5 border border-white/10 px-2 py-1.5 text-xs text-white placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-150"
               />
             </div>
-
-            <div className="mb-2">
-              <Label className="text-xs text-muted-foreground">Products / Services</Label>
-              <Input
-                type="text"
+            <div>
+              <FieldLabel>Products / Services</FieldLabel>
+              <FieldInput
                 placeholder="product1, product2..."
                 value={Array.isArray(boothProfile?.products) ? boothProfile.products.join(', ') : ''}
                 onChange={(e) => {
-                  const tags = e.target.value.split(',').map((t) => t.trim()).filter(Boolean);
+                  const tags = (e.target as HTMLInputElement).value.split(',').map((t) => t.trim()).filter(Boolean);
                   updateBoothProfile(id, { products: tags });
                 }}
-                className="h-7 text-xs mt-0.5"
               />
             </div>
-          </>
-        )}
-
-        {/* Custom Metadata */}
-        <Separator className="my-3" />
-        <SectionTitle>Custom Metadata</SectionTitle>
-        {Object.entries(obj.metadata || {}).filter(([k]) => !['booth_id', 'status', 'pricing_tier', 'booth_number', 'booth_status', 'exhibitor_id', 'exhibitor_name', 'boothCategory', 'sizeSqm', 'libraryItemId'].includes(k)).map(([key, value]) => (
-          <div key={key} className="flex gap-1 mb-1 items-center">
-            <Input type="text" value={key} readOnly className="h-7 text-xs w-20 bg-muted" />
-            <Input type="text" value={String(value ?? '')} onChange={(e) => update({ metadata: { ...obj.metadata, [key]: e.target.value } })} className="h-7 text-xs flex-1" />
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 text-destructive hover:bg-destructive/10"
-              onClick={() => { const m = { ...obj.metadata }; delete m[key]; update({ metadata: m }); }}
-            >
-              <span className="text-xs">✕</span>
-            </Button>
           </div>
-        ))}
-        <MetadataAdder onAdd={(key, value) => update({ metadata: { ...obj.metadata, [key]: value } })} />
+        </Section>
+      )}
 
-        {/* Cross-Floor Link */}
-        <CrossFloorLinkPanel />
+      {/* Custom Metadata */}
+      <Section title="Custom Metadata" icon={<Hash size={12} />} defaultOpen={false}>
+        <div className="space-y-1">
+          {Object.entries(obj.metadata || {}).filter(([k]) => !['booth_id', 'status', 'pricing_tier', 'booth_number', 'booth_status', 'exhibitor_id', 'exhibitor_name', 'boothCategory', 'sizeSqm', 'libraryItemId'].includes(k)).map(([key, value]) => (
+            <div key={key} className="flex gap-1 items-center">
+              <FieldInput value={key} readOnly className="w-20 bg-white/[0.03] text-white/40" />
+              <FieldInput value={String(value ?? '')} onChange={(e) => update({ metadata: { ...obj.metadata, [key]: (e.target as HTMLInputElement).value } })} className="flex-1" />
+              <button
+                className="p-1 rounded text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                onClick={() => { const m = { ...obj.metadata }; delete m[key]; update({ metadata: m }); }}
+              >
+                <X size={12} />
+              </button>
+            </div>
+          ))}
+          <MetadataAdder onAdd={(key, value) => update({ metadata: { ...obj.metadata, [key]: value } })} />
+        </div>
+      </Section>
 
-        {/* ID */}
-        <Separator className="my-3" />
-        <SectionTitle>ID</SectionTitle>
-        <p className="text-xs text-muted-foreground font-mono break-all">{obj.id}</p>
+      {/* Cross-Floor Link */}
+      <CrossFloorLinkPanel />
+
+      {/* ID */}
+      <div className="px-3 py-2 border-t border-white/5">
+        <FieldLabel>Object ID</FieldLabel>
+        <p className="text-[10px] text-white/30 font-mono break-all select-all">{obj.id}</p>
       </div>
-    </ScrollArea>
+    </div>
   );
 }
 
@@ -457,16 +473,24 @@ function MetadataAdder({ onAdd }: { onAdd: (key: string, value: string) => void 
   const [value, setValue] = useState('');
   return (
     <div className="flex gap-1 mt-1">
-      <Input type="text" placeholder="key" value={key} onChange={(e) => setKey(e.target.value)} className="h-7 text-xs w-20" />
-      <Input type="text" placeholder="value" value={value} onChange={(e) => setValue(e.target.value)} className="h-7 text-xs flex-1" />
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-6 w-6 text-emerald-600 hover:bg-emerald-50"
+      <FieldInput placeholder="key" value={key} onChange={(e) => setKey((e.target as HTMLInputElement).value)} className="w-20" />
+      <FieldInput placeholder="value" value={value} onChange={(e) => setValue((e.target as HTMLInputElement).value)} className="flex-1" />
+      <button
+        className="p-1 rounded text-emerald-400/60 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors"
         onClick={() => { if (key.trim()) { onAdd(key.trim(), value); setKey(''); setValue(''); } }}
       >
-        <span className="text-xs font-bold">+</span>
-      </Button>
+        <Plus size={12} />
+      </button>
     </div>
+  );
+}
+
+function FieldInput({ type = 'text', ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <input
+      type={type}
+      {...props}
+      className={`w-full h-7 px-2 text-xs bg-white/5 border border-white/10 rounded-md text-white placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-150 ${props.className || ''}`}
+    />
   );
 }
