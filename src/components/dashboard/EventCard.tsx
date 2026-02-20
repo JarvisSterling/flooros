@@ -8,6 +8,12 @@ interface EventCardProps {
   event: EventWithCounts;
 }
 
+// M6: Validate logo_url to prevent XSS
+function isSafeImageUrl(url: string | null): boolean {
+  if (!url) return false;
+  return url.startsWith('https://') || url.startsWith('/');
+}
+
 export default function EventCard({ event }: EventCardProps) {
   const formatDate = (date: string | null) => {
     if (!date) return '—';
@@ -23,9 +29,9 @@ export default function EventCard({ event }: EventCardProps) {
       <div className="group relative rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-5 hover:bg-white/10 hover:border-white/20 transition-all duration-200 cursor-pointer">
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3">
-            {event.logo_url ? (
+            {isSafeImageUrl(event.logo_url) ? (
               <img
-                src={event.logo_url}
+                src={event.logo_url!}
                 alt={event.name}
                 className="w-10 h-10 rounded-lg object-cover"
               />
