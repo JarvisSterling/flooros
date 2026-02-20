@@ -348,6 +348,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   updateBoothField: (objectId, field, value) => {
+    const UPDATABLE_BOOTH_FIELDS: Array<keyof Booth> = ['number', 'name', 'size_category', 'status', 'price', 'exhibitor_id'];
+    if (!UPDATABLE_BOOTH_FIELDS.includes(field)) {
+      console.warn(`updateBoothField: field "${String(field)}" is not in the allowlist`);
+      return;
+    }
     const { booths } = get();
     const booth = booths.get(objectId);
     if (!booth) return;
@@ -446,7 +451,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
     try {
       await fetch(`/api/booths/${booth.id}`, { method: 'DELETE' });
-    } catch { /* best effort */ }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      set({ syncError: `Failed to delete booth: ${message}` });
+    }
   },
 
   loadBooths: async (eventId, floorId) => {
@@ -702,10 +710,22 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
   removeObjects: (ids) => {
     get().pushHistory();
+    // Minor 5: Clean up orphan booths for deleted objects
+    const { booths, boothProfiles } = get();
+    const bm = new Map(booths);
+    const pm = new Map(boothProfiles);
+    for (const id of ids) {
+      const booth = bm.get(id);
+      if (booth) {
+        bm.delete(id);
+        pm.delete(booth.id);
+        fetch(`/api/booths/${booth.id}`, { method: 'DELETE' }).catch(() => {});
+      }
+    }
     set((s) => {
       const m = new Map(s.objects);
       ids.forEach((id) => m.delete(id));
-      return { objects: m, selectedObjectIds: new Set(), isDirty: true, saveStatus: 'unsaved' as const };
+      return { objects: m, selectedObjectIds: new Set(), isDirty: true, saveStatus: 'unsaved' as const, booths: bm, boothProfiles: pm };
     });
   },
   setObjects: (objs) => {

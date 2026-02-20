@@ -38,6 +38,7 @@ export function generateBoothNumber(existingNumbers: string[], floorNumber?: num
   let num = 1;
   while (existingNumbers.includes(prefix + String(num).padStart(3, '0'))) {
     num++;
+    if (num > 9999) break;
   }
   return prefix + String(num).padStart(3, '0');
 }

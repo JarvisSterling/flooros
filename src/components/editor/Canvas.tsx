@@ -265,7 +265,7 @@ export default function EditorCanvas() {
   }, [activeTool, drawing, createObject, addObject, resetDrawing]);
 
   // Transform end - sync back to store
-  const handleTransformEnd = useCallback((e: any) => {
+  const handleTransformEnd = useCallback((e: Konva.KonvaEventObject<Event>) => {
     const node = e.target;
     const id = node.id();
     if (!id) return;

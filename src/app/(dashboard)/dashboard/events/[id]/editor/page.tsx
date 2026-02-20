@@ -31,7 +31,7 @@ export default function EventEditorPage() {
   const [error, setError] = useState<string | null>(null);
   const [activePanel, setActivePanel] = useState<PanelType>('layers');
 
-  const { loadFloors, loadBooths, floorPlanId } = useEditorStore();
+  const { loadFloors, loadBooths, floorPlanId, floors, addFloor } = useEditorStore();
 
   useKeyboardShortcuts();
   useAutoSave();
@@ -96,6 +96,27 @@ export default function EventEditorPage() {
             className="text-blue-400 hover:underline"
           >
              Back to event
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!loading && !error && floors.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-950 text-white">
+        <div className="text-center">
+          <div className="text-6xl mb-4">🏗️</div>
+          <h2 className="text-xl font-semibold mb-2">No floors yet</h2>
+          <p className="text-gray-400 mb-6">Create your first floor to start designing</p>
+          <button
+            onClick={async () => {
+              const floor = await addFloor({ name: 'Floor 1', floor_number: 1 });
+              if (floor) await useEditorStore.getState().switchFloor(floor.id);
+            }}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg font-medium transition-colors"
+          >
+            Create your first floor
           </button>
         </div>
       </div>
