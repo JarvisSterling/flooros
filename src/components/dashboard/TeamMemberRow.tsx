@@ -61,13 +61,17 @@ export default function TeamMemberRow({
 
   const roleColor = ROLE_COLORS[member.role] ?? ROLE_COLORS.viewer;
 
+  // m3: Show email if available, otherwise show name or fallback
+  const displayName = member.full_name ?? 'Unnamed User';
+  const displayEmail = (member as any).email ?? null;
+
   return (
     <div className="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-white/5 transition-colors group">
       <div className="flex items-center gap-3 min-w-0">
         {member.avatar_url ? (
           <img
             src={member.avatar_url}
-            alt={member.full_name ?? 'User'}
+            alt={displayName}
             className="w-10 h-10 rounded-full object-cover flex-shrink-0"
           />
         ) : (
@@ -80,12 +84,12 @@ export default function TeamMemberRow({
         )}
         <div className="min-w-0">
           <p className="text-white font-medium truncate">
-            {member.full_name ?? 'Unnamed User'}
+            {displayName}
             {member.id === currentUserId && (
               <span className="text-white/40 text-sm ml-2">(you)</span>
             )}
           </p>
-          <p className="text-white/50 text-sm truncate">{member.id}</p>
+          <p className="text-white/50 text-sm truncate">{displayEmail || member.full_name || member.id}</p>
         </div>
       </div>
 
